@@ -62,7 +62,7 @@ const Part kParts[] = {
      "space_grgl1", "space_grgl1.manifest", "", ""},
     {"absw1", "Angry Birds Star Wars", "1.5.0", "AngryBirdsStarWars.exe", "starwars",
      "absw1", "generated", "sw1", "AngryBirdsStarWars.manifest",
-     "grgl1", "grgl1.manifest", "", ""},
+     "grgl1", "grgl1.manifest", "grgl2", "grgl2.manifest"},
     {"absw2", "Angry Birds Star Wars II", "1.5.1", "AngryBirdsStarWarsII.exe", "starwarsii",
      "absw2", "generated_sw2", "sw2", "AngryBirdsStarWarsII.manifest",
      "sw2_grgl1", "sw2_grgl1.manifest",
