@@ -1,0 +1,25 @@
+image_base 0x10000000  image_size 0xca000  entry 0x10093a88  timestamp 0x54067f6b
+relocations: yes
+sections:
+  .text    va 0x10001000 vsize   0x95b4e raw   0x95c00 chars 0x60000020
+  .rdata   va 0x10097000 vsize   0x22aca raw   0x22c00 chars 0x40000040
+  .data    va 0x100ba000 vsize    0x53ec raw     0x800 chars 0xc0000040
+  .rsrc    va 0x100c0000 vsize     0x1b4 raw     0x200 chars 0x40000040
+  .reloc   va 0x100c1000 vsize    0x8fcc raw    0x9000 chars 0x42000040
+imports per dll:
+  OPENGL32.dll   45
+  KERNEL32.dll   22
+  GDI32.dll      3
+  MSVCP100.dll   3
+  MSVCR100.dll   63
+exports: 1 func=1
+rich header (prodid build count):
+  152 20115 1
+  158 40219 9
+  156 40219 4
+  147 30729 9
+    1     0 155
+  170 40219 102
+  171 40219 63
+  155 40219 1
+  157 40219 1

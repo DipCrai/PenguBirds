@@ -1,0 +1,8 @@
+# recomp_lift manifest for sw2 grgl2.dll (OpenGL 2 renderer, PC build).
+# The game's config lists "gl2" first; without this module it falls back to
+# grgl1, whose fixed 1280x720 viewport looks like a low-resolution UI.
+
+# createContext's __except continuation, reached by _JumpToContinuation
+# (the same continuation as the first game's grgl2 at 0x100092BD): not a
+# call target, so it needs an entry.
+entry 100093FD

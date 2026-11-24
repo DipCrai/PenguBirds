@@ -1,0 +1,1622 @@
+va	kind	mangled	demangled
+78AA1928	func	_wctype	
+78AA1E80	func	memcpy	
+78AA21F0	func	memchr	
+78AA22A0	func	_memccpy	
+78AA2300	func	memmove	
+78AA2680	func	memset	
+78AA2700	func	strcpy	
+78AA2710	func	strcat	
+78AA2800	func	strcmp	
+78AA2890	func	strcspn	
+78AA2900	func	strlen	
+78AA2990	func	strncat	
+78AA2AD0	func	strncpy	
+78AA2C00	func	_strnset	
+78AA2C40	func	strpbrk	
+78AA2C80	func	strrchr	
+78AA2CB0	func	_strrev	
+78AA2CF0	func	_strset	
+78AA2D20	func	strspn	
+78AA2D80	func	_EH_prolog	
+78AA2DC7	func	_NLG_Return	
+78AA2DF0	func	_inp	
+78AA2DF9	func	_inpw	
+78AA2E01	func	_inpd	
+78AA2E20	func	_outp	
+78AA2E2D	func	_outpw	
+78AA2E3A	func	_outpd	
+78AA2E50	func	_local_unwind4	
+78AA2F26	func	_seh_longjmp_unwind4	
+78AA2FC8	func	_except_handler2	
+78AA3080	func	_setjmp	
+78AA30C0	func	_setjmp3	
+78AA3140	func	_CIsqrt	
+78AA3154	func	sqrt	
+78AA3200	func	acos	
+78AA3240	func	_CIacos	
+78AA3360	func	asin	
+78AA33A0	func	_CIasin	
+78AA34B0	func	atan	
+78AA34F0	func	_CIatan	
+78AA35D0	func	cos	
+78AA3610	func	_CIcos	
+78AA3700	func	log	
+78AA3740	func	_CIlog	
+78AA3850	func	log10	
+78AA3890	func	_CIlog10	
+78AA39A0	func	sin	
+78AA39E0	func	_CIsin	
+78AA3AD0	func	tan	
+78AA3B10	func	_CItan	
+78AA3C00	func	_ftol	
+78AA3C40	func	ceil	
+78AA3DB0	func	floor	
+78AA3F40	func	modf	
+78AA40E0	func	fmod	
+78AA40EA	func	_CIfmod	
+78AA4350	func	pow	
+78AA4390	func	_CIpow	
+78AA47B0	func	atan2	
+78AA47BA	func	_CIatan2	
+78AAF280	func	sinh	
+78AAF28A	func	cosh	
+78AAF291	func	tanh	
+78AAF298	func	_CIsinh	
+78AAF2A2	func	_CIcosh	
+78AAF2A9	func	_CItanh	
+78AAF668	func	_except_handler3	
+78AAF766	func	_seh_longjmp_unwind	
+78AAF7A0	func	_global_unwind2	
+78AAF805	func	_local_unwind2	
+78AAF889	func	_abnormal_termination	
+78AAF8CC	func	_NLG_Dispatch2	
+78AAF8D6	func	_NLG_Return2	
+78AAF8E0	func	exp	
+78AAF91C	func	_CIexp	
+78AAFC74	vftable	??_7exception@std@@6B@	const std::exception::`vftable'
+78AAFCC8	vftable	??_7bad_cast@std@@6B@	const std::bad_cast::`vftable'
+78AAFD20	vftable	??_7bad_typeid@std@@6B@	const std::bad_typeid::`vftable'
+78AAFD78	vftable	??_7__non_rtti_object@std@@6B@	const std::__non_rtti_object::`vftable'
+78AAFDD0	func	strstr	
+78AAFE90	func	strchr	
+78AAFF4E	func	??1type_info@@UAE@XZ	public: virtual __thiscall type_info::~type_info(void)
+78AAFFCC	vftable	??_7exception@@6B@	const exception::`vftable'
+78AB0040	func	_longjmpex	
+78AB0050	func	longjmp	
+78AB0110	func	memcpy_s	
+78AB014E	func	free	
+78AB0174	func	??3@YAXPAX@Z	void __cdecl operator delete(void *)
+78AB017C	func	??_V@YAXPAX@Z	void __cdecl operator delete[](void *)
+78AB0233	func	malloc	
+78AB0322	func	_ultow_s	
+78AB0341	func	__set_flsgetvalue	
+78AB0369	func	div	
+78AB0369	func	ldiv	
+78AB0377	func	wcsnlen	
+78AB072B	func	_getptd	
+78AB0815	func	_errno	
+78AB0830	func	iswctype	
+78AB086A	func	_wcsicmp	
+78AB08D2	func	memmove_s	
+78AB0910	func	_lock	
+78AB0934	func	_unlock	
+78AB0AE2	func	wcschr	
+78AB0B09	func	_itow_s	
+78AB0B31	func	_malloc_crt	
+78AB0CC0	func	_wcstol_l	
+78AB0CC0	func	wcstol	
+78AB0CDA	func	_wtol	
+78AB0CF0	func	_wtoi	
+78AB0CF8	func	wmemcpy_s	
+78AB0E2F	func	bsearch	
+78AB0EBF	func	wcspbrk	
+78AB0F61	func	_fputwc_nolock	
+78AB1A8D	func	_vsnwprintf_l	
+78AB1B20	func	_vsnwprintf	
+78AB1BD5	func	_mbtowc_l	
+78AB1E1C	func	_calloc_crt	
+78AB1E9B	func	_initptd	
+78AB20F1	func	wcsstr	
+78AB21A4	func	_itow	
+78AB21CC	func	isdigit	
+78AB21EC	func	wcslen	
+78AB2207	func	_fgetwc_nolock	
+78AB223B	func	wcsncmp	
+78AB2274	func	wcsncpy_s	
+78AB22EC	func	calloc	
+78AB2318	func	_iswspace_l	
+78AB2318	func	iswspace	
+78AB232B	func	??2@YAPAXI@Z	void * __cdecl operator new(unsigned int)
+78AB2346	func	wcsrchr	
+78AB2376	func	swprintf_s	
+78AB2394	func	wcsspn	
+78AB23DB	func	_waccess_s	
+78AB2422	func	_iswdigit_l	
+78AB2422	func	iswdigit	
+78AB2435	func	wcscpy_s	
+78AB2490	func	wcscat_s	
+78AB24F6	func	_isleadbyte_l	
+78AB254C	func	_towlower_l	
+78AB25B0	func	_ltow	
+78AB25DA	func	_msize	
+78AB2627	func	_initterm	
+78AB2645	func	_initterm_e	
+78AB266F	func	__dllonexit	
+78AB278C	func	_wcslwr	
+78AB27E3	func	_freefls	
+78AB29D4	func	_vswprintf_s_l	
+78AB33CA	func	vswprintf_s	
+78AB3432	func	_vscwprintf	
+78AB379E	func	towlower	
+78AB3851	func	_wcslwr_s_l	
+78AB3884	func	_wcslwr_s	
+78AB389B	func	_time64	
+78AB396F	func	wcsncpy	
+78AB39BD	func	_wfullpath	
+78AB3A30	func	__iob_func	
+78AB3A30	func	__p__iob	
+78AB3B1D	func	_wsplitpath_s	
+78AB4245	func	swscanf_s	
+78AB42BF	func	_ungetwc_nolock	
+78AB4396	func	_wcsicmp_l	
+78AB4472	func	_isdigit_l	
+78AB455E	func	wcstok	
+78AB4605	func	_snwprintf	
+78AB4697	func	_wcstoul_l	
+78AB4697	func	wcstoul	
+78AB46C8	func	realloc	
+78AB4717	func	_recalloc	
+78AB4785	func	_realloc_crt	
+78AB47F2	func	_wcsnicmp	
+78AB486E	func	wcscspn	
+78AB48B4	func	strcpy_s	
+78AB48FB	func	strcat_s	
+78AB4A80	func	qsort	
+78AB4C59	func	??_U@YAPAXI@Z	void * __cdecl operator new[](unsigned int)
+78AB4C64	func	wcstok_s	
+78AB4F5D	func	setlocale	
+78AB5D76	func	_wcstombs_s_l	
+78AB5E00	func	wcstombs_s	
+78AB5FFC	func	_atoflt_l	
+78AB610C	func	_freea	
+78AB610C	func	_freea_s	
+78AB62AE	func	__crtLCMapStringA	
+78AB6447	func	strncpy_s	
+78AB828B	func	memcmp	
+78AB8440	func	_itoa_s	
+78AB95DC	func	_CRT_RTC_INIT	
+78AB95DC	func	_CRT_RTC_INITW	
+78ABA0A8	func	_wtof_l	
+78ABA115	func	_wtof	
+78ABA13D	func	_wsplitpath	
+78ABA2FA	func	___lc_handle_func	
+78ABA314	func	___lc_codepage_func	
+78ABA32E	func	__pctype_func	
+78ABA455	func	_unlock_file	
+78ABA48D	func	_lock_file	
+78ABA4CA	func	_fileno	
+78ABA675	func	_get_osfhandle	
+78ABA72B	func	_close	
+78ABA80F	func	_fclose_nolock	
+78ABA864	func	fclose	
+78ABA8E4	func	_set_purecall_handler	
+78ABA9E6	func	_onexit	
+78ABAAAE	func	__doserrno	
+78ABAABF	func	_dosmaperr	
+78ABAC1F	func	_read	
+78ABAEAC	func	_wsopen_s	
+78ABAECC	func	_get_fmode	
+78ABB1C6	func	_setmbcp	
+78ABB339	func	_ismbblead	
+78ABB377	func	_encoded_null	
+78ABB6CD	func	??0exception@std@@QAE@ABQBDH@Z	public: __thiscall std::exception::exception(char const *const &, int)
+78ABB71B	func	__set_app_type	
+78ABBDC0	func	_wfsopen	
+78ABBFD3	func	??1__non_rtti_object@std@@UAE@XZ	public: virtual __thiscall std::__non_rtti_object::~__non_rtti_object(void)
+78ABBFD3	func	??1bad_cast@std@@UAE@XZ	public: virtual __thiscall std::bad_cast::~bad_cast(void)
+78ABBFD3	func	??1bad_typeid@std@@UAE@XZ	public: virtual __thiscall std::bad_typeid::~bad_typeid(void)
+78ABBFD3	func	??1exception@std@@UAE@XZ	public: virtual __thiscall std::exception::~exception(void)
+78ABBFDB	func	?_Tidy@exception@std@@AAEXXZ	private: void __thiscall std::exception::_Tidy(void)
+78ABBFF4	func	??4exception@std@@QAEAAV01@ABV01@@Z	public: class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+78ABC021	func	??0exception@std@@QAE@ABV01@@Z	public: __thiscall std::exception::exception(class std::exception const &)
+78ABC246	func	_control87	
+78ABC3B5	func	_controlfp_s	
+78ABC544	func	atexit	
+78ABC64C	func	__AdjustPointer	
+78ABC974	func	??0__non_rtti_object@std@@QAE@ABV01@@Z	public: __thiscall std::__non_rtti_object::__non_rtti_object(class std::__non_rtti_object const &)
+78ABC9C1	func	_wfopen_s	
+78ABCC6B	func	_wcsupr_s_l	
+78ABCC9E	func	_wcsupr_s	
+78ABCCBF	func	fgetws	
+78ABCD7C	func	_filbuf	
+78ABCFA5	func	isprint	
+78ABD02E	func	isleadbyte	
+78ABD04D	func	mbtowc	
+78ABD1D2	func	__getmainargs	
+78ABD3A4	func	strncmp	
+78ABEB23	func	_isatty	
+78ABEC6D	func	_write	
+78ABED1C	func	_flsbuf	
+78ABEE19	func	_wmakepath_s	
+78ABEECA	func	strnlen	
+78ABEEF1	func	fflush	
+78ABEF54	func	_fflush_nolock	
+78ABF163	func	wcsncat_s	
+78ABF5C3	func	_vsprintf_s_l	
+78ABFF2A	func	sprintf_s	
+78ABFF48	func	_tolower_l	
+78ABFFA2	func	_strnicmp_l	
+78AC0039	func	_strnicmp	
+78AC0067	func	_ungetc_nolock	
+78AC00F4	func	_isspace_l	
+78AC0133	func	isspace	
+78AC05F4	func	sscanf_s	
+78AC070F	func	_wctomb_s_l	
+78AC079B	func	wctomb_s	
+78AC099C	func	vfwprintf	
+78AC09D4	func	atoi	
+78AC09EA	func	_wcsnicoll_l	
+78AC0A97	func	_wcsnicoll	
+78AC0C28	func	strtol	
+78AC0C50	func	atol	
+78AC0CD7	func	_wdupenv_s	
+78AC0DA7	func	_waccess	
+78AC0DBF	func	_wcsnicmp_l	
+78AC0E69	func	_wsearchenv_s	
+78AC111B	func	iswascii	
+78AC112F	func	_isalnum_l	
+78AC1173	func	isalnum	
+78AC11AC	func	strncat_s	
+78AC1257	func	_fwrite_nolock	
+78AC1311	func	fwrite	
+78AC13FF	func	_lseek	
+78AC14AC	func	_ftell_nolock	
+78AC1550	func	ftell	
+78AC1688	func	?_NumberOfSpins@?$_SpinWait@$00@details@Concurrency@@IAEKXZ	protected: unsigned long __thiscall Concurrency::details::_SpinWait<1>::_NumberOfSpins(void)
+78AC1688	func	?_NumberOfSpins@?$_SpinWait@$0A@@details@Concurrency@@IAEKXZ	protected: unsigned long __thiscall Concurrency::details::_SpinWait<0>::_NumberOfSpins(void)
+78AC16CB	func	__unDNameEx	
+78AC1975	func	_wcsdup	
+78AC1A66	func	_flushall	
+78AC1B66	func	vsprintf_s	
+78AC1B83	func	_strnicoll_l	
+78AC1BF2	func	_mbsnbicoll_l	
+78AC1C61	func	_mbsnbicoll	
+78AC1CC0	func	getenv	
+78AC1DBD	func	setvbuf	
+78AC1E9E	func	fseek	
+78AC1F1C	func	_fseek_nolock	
+78AC2073	func	_wputenv_s	
+78AC20E4	func	_mbschr_l	
+78AC212D	func	_mbschr	
+78AC23B5	func	__wgetmainargs	
+78AC24DC	func	_wgetenv_s	
+78AC25A4	func	rewind	
+78AC269E	func	_fullpath	
+78AC28E6	func	_set_invalid_parameter_handler	
+78AC2ACE	func	_fread_nolock_s	
+78AC2B9B	func	fread_s	
+78AC2C24	func	fread	
+78AC2F10	func	fputws	
+78AC2FEE	func	_wunlink	
+78AC2FF6	func	_wremove	
+78AC3440	func	_wspawnve	
+78AC34F7	func	_wspawnvpe	
+78AC3594	func	_wspawnvp	
+78AC3974	func	_getmbcp	
+78AC39A4	func	??2@YAPAXIHPBDH@Z	void * __cdecl operator new(unsigned int, int, char const *, int)
+78AC3A30	func	_splitpath_s	
+78AC3B8D	func	_makepath_s	
+78AC3C55	func	_mbsdec_l	
+78AC3CA7	func	_mbsdec	
+78AC3E7D	func	_atof_l	
+78AC3EFC	func	atof	
+78AC4074	func	_ltoa_s	
+78AC409E	func	_ultoa_s	
+78AC44CA	func	__unDName	
+78AC5117	func	_strlwr_s_l	
+78AC514B	func	_strlwr_s	
+78AC516C	func	fputwc	
+78AC5A32	func	_get_wpgmptr	
+78AC5A55	func	_vswprintf_c_l	
+78AC5B99	func	_strdup	
+78AC5BE5	func	strtoul	
+78AC5C81	func	__tzname	
+78AC5C87	func	_get_timezone	
+78AC5CA3	func	_get_daylight	
+78AC5CBF	func	__timezone	
+78AC5CC5	func	__daylight	
+78AC5CCB	func	__dstbias	
+78AC5F56	func	__crtCompareStringW	
+78AC62A7	func	__crtCompareStringA	
+78AC665C	func	_get_dstbias	
+78AC6924	func	_localtime64_s	
+78AC6A1D	func	_gmtime64_s	
+78AC6CCB	func	_dup2	
+78AC7462	func	asctime_s	
+78AC7611	func	_ctime64_s	
+78AC77FB	func	?_query_new_mode@@YAHXZ	int __cdecl _query_new_mode(void)
+78AC7B0C	func	exit	
+78AC7B22	func	_cexit	
+78AC7B88	func	__p__commode	
+78AC7B8E	func	__p__fmode	
+78AC7B9C	func	_ltow_s	
+78AC7BC6	func	_getdrive	
+78AC7C6D	func	_wstat64i32	
+78AC7DEE	func	_rmtmp	
+78AC7EB8	func	_snwprintf_s	
+78AC7ED9	func	_vsnwprintf_s_l	
+78AC7F4A	func	_tzset	
+78AC837E	func	_CreateFrameInfo	
+78AC83AA	func	_IsExceptionObjectToBeDestroyed	
+78AC83D1	func	_FindAndUnlinkFrame	
+78AC83FC	func	__TypeMatch	
+78AC8448	func	__DestructExceptionObject	
+78AC849C	func	__CxxRegisterExceptionObject	
+78AC854A	func	__CxxUnregisterExceptionObject	
+78AC8635	func	__CxxQueryExceptionSize	
+78AC8639	func	__CxxExceptionFilter	
+78AC86E8	func	_CxxThrowException	
+78AC8754	func	__clean_type_info_names_internal	
+78AD8ADA	func	_fcloseall	
+78AE5B0B	func	?_SpinOnce@?$_SpinWait@$00@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_SpinWait<1>::_SpinOnce(void)
+78AE5BA7	func	?_DoYield@?$_SpinWait@$00@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_SpinWait<1>::_DoYield(void)
+78AE5BAA	func	?_Reset@?$_SpinWait@$00@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_SpinWait<1>::_Reset(void)
+78AE5BBA	func	?_SetSpinCount@?$_SpinWait@$00@details@Concurrency@@QAEXI@Z	public: void __thiscall Concurrency::details::_SpinWait<1>::_SetSpinCount(unsigned int)
+78AE5C39	func	?_CheckTaskCollection@_UnrealizedChore@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_UnrealizedChore::_CheckTaskCollection(void)
+78AE6170	func	?Id@Context@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::Context::Id(void)
+78AE6183	func	?VirtualProcessorId@Context@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::Context::VirtualProcessorId(void)
+78AE6197	func	?ScheduleGroupId@Context@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::Context::ScheduleGroupId(void)
+78AE61AB	func	?Block@Context@Concurrency@@SAXXZ	public: static void __cdecl Concurrency::Context::Block(void)
+78AE61BC	func	?Yield@Context@Concurrency@@SAXXZ	public: static void __cdecl Concurrency::Context::Yield(void)
+78AE61C8	func	?_SpinYield@Context@Concurrency@@SAXXZ	public: static void __cdecl Concurrency::Context::_SpinYield(void)
+78AE61D4	func	?IsCurrentTaskCollectionCanceling@Context@Concurrency@@SA_NXZ	public: static bool __cdecl Concurrency::Context::IsCurrentTaskCollectionCanceling(void)
+78AE61FA	func	?CurrentContext@Context@Concurrency@@SAPAV12@XZ	public: static class Concurrency::Context * __cdecl Concurrency::Context::CurrentContext(void)
+78AE6204	func	?Oversubscribe@Context@Concurrency@@SAX_N@Z	public: static void __cdecl Concurrency::Context::Oversubscribe(bool)
+78AE6698	func	??4?$_SpinWait@$00@details@Concurrency@@QAEAAV012@ABV012@@Z	public: class Concurrency::details::_SpinWait<1> & __thiscall Concurrency::details::_SpinWait<1>::operator=(class Concurrency::details::_SpinWait<1> const &)
+78AE6698	func	??4?$_SpinWait@$0A@@details@Concurrency@@QAEAAV012@ABV012@@Z	public: class Concurrency::details::_SpinWait<0> & __thiscall Concurrency::details::_SpinWait<0>::operator=(class Concurrency::details::_SpinWait<0> const &)
+78AE66B0	func	??_F?$_SpinWait@$00@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_SpinWait<1>::`default ctor closure'(void)
+78AE66B0	func	??_F?$_SpinWait@$0A@@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_SpinWait<0>::`default ctor closure'(void)
+78AE6E3D	func	??0?$_SpinWait@$00@details@Concurrency@@QAE@P6AXXZ@Z	public: __thiscall Concurrency::details::_SpinWait<1>::_SpinWait<1>(void (__cdecl *)(void))
+78AE6E3D	func	??0?$_SpinWait@$0A@@details@Concurrency@@QAE@P6AXXZ@Z	public: __thiscall Concurrency::details::_SpinWait<0>::_SpinWait<0>(void (__cdecl *)(void))
+78AE6E52	func	?_SpinOnce@?$_SpinWait@$0A@@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_SpinWait<0>::_SpinOnce(void)
+78AE7231	func	?_DoYield@?$_SpinWait@$0A@@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_SpinWait<0>::_DoYield(void)
+78AE7234	func	?_Reset@?$_SpinWait@$0A@@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_SpinWait<0>::_Reset(void)
+78AE7244	func	?_ShouldSpinAgain@?$_SpinWait@$00@details@Concurrency@@IAE_NXZ	protected: bool __thiscall Concurrency::details::_SpinWait<1>::_ShouldSpinAgain(void)
+78AE7244	func	?_ShouldSpinAgain@?$_SpinWait@$0A@@details@Concurrency@@IAE_NXZ	protected: bool __thiscall Concurrency::details::_SpinWait<0>::_ShouldSpinAgain(void)
+78AE7284	func	?_SetSpinCount@?$_SpinWait@$0A@@details@Concurrency@@QAEXI@Z	public: void __thiscall Concurrency::details::_SpinWait<0>::_SetSpinCount(unsigned int)
+78AE72B4	func	?Id@CurrentScheduler@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::CurrentScheduler::Id(void)
+78AE72C8	func	?GetNumberOfVirtualProcessors@CurrentScheduler@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::CurrentScheduler::GetNumberOfVirtualProcessors(void)
+78AE72DC	func	?GetPolicy@CurrentScheduler@Concurrency@@SA?AVSchedulerPolicy@2@XZ	public: static class Concurrency::SchedulerPolicy __cdecl Concurrency::CurrentScheduler::GetPolicy(void)
+78AE72FB	func	?Get@CurrentScheduler@Concurrency@@SAPAVScheduler@2@XZ	public: static class Concurrency::Scheduler * __cdecl Concurrency::CurrentScheduler::Get(void)
+78AE7304	func	?Create@CurrentScheduler@Concurrency@@SAXABVSchedulerPolicy@2@@Z	public: static void __cdecl Concurrency::CurrentScheduler::Create(class Concurrency::SchedulerPolicy const &)
+78AE7322	func	?Detach@CurrentScheduler@Concurrency@@SAXXZ	public: static void __cdecl Concurrency::CurrentScheduler::Detach(void)
+78AE7390	func	?RegisterShutdownEvent@CurrentScheduler@Concurrency@@SAXPAX@Z	public: static void __cdecl Concurrency::CurrentScheduler::RegisterShutdownEvent(void *)
+78AE73C4	func	?CreateScheduleGroup@CurrentScheduler@Concurrency@@SAPAVScheduleGroup@2@XZ	public: static class Concurrency::ScheduleGroup * __cdecl Concurrency::CurrentScheduler::CreateScheduleGroup(void)
+78AE73D1	func	?ScheduleTask@CurrentScheduler@Concurrency@@SAXP6AXPAX@Z0@Z	public: static void __cdecl Concurrency::CurrentScheduler::ScheduleTask(void (__cdecl *)(void *), void *)
+78AE73EB	func	??1critical_section@Concurrency@@QAE@XZ	public: __thiscall Concurrency::critical_section::~critical_section(void)
+78AE73EB	func	??1reader_writer_lock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::reader_writer_lock::~reader_writer_lock(void)
+78AE7413	func	?GetSharedTimerQueue@details@Concurrency@@YAPAXXZ	void * __cdecl Concurrency::details::GetSharedTimerQueue(void)
+78AE751C	func	??0event@Concurrency@@QAE@XZ	public: __thiscall Concurrency::event::event(void)
+78AE7539	func	??1event@Concurrency@@QAE@XZ	public: __thiscall Concurrency::event::~event(void)
+78AE75B0	func	?wait@event@Concurrency@@QAEII@Z	public: unsigned int __thiscall Concurrency::event::wait(unsigned int)
+78AE76F4	func	?reset@event@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::event::reset(void)
+78AE7791	func	?set@event@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::event::set(void)
+78AE786E	func	?wait_for_multiple@event@Concurrency@@SAIPAPAV12@I_NI@Z	public: static unsigned int __cdecl Concurrency::event::wait_for_multiple(class Concurrency::event **, unsigned int, bool, unsigned int)
+78AE805E	func	??0scheduler_resource_allocation_error@Concurrency@@QAE@PBDJ@Z	public: __thiscall Concurrency::scheduler_resource_allocation_error::scheduler_resource_allocation_error(char const *, long)
+78AE8082	func	??0scheduler_resource_allocation_error@Concurrency@@QAE@J@Z	public: __thiscall Concurrency::scheduler_resource_allocation_error::scheduler_resource_allocation_error(long)
+78AE80AE	func	?get_error_code@scheduler_resource_allocation_error@Concurrency@@QBEJXZ	public: long __thiscall Concurrency::scheduler_resource_allocation_error::get_error_code(void) const
+78AE80B2	func	??0unsupported_os@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::unsupported_os::unsupported_os(char const *)
+78AE80D0	func	??0unsupported_os@Concurrency@@QAE@XZ	public: __thiscall Concurrency::unsupported_os::unsupported_os(void)
+78AE80F4	func	??0scheduler_not_attached@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::scheduler_not_attached::scheduler_not_attached(char const *)
+78AE8112	func	??0scheduler_not_attached@Concurrency@@QAE@XZ	public: __thiscall Concurrency::scheduler_not_attached::scheduler_not_attached(void)
+78AE8136	func	??0improper_scheduler_attach@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::improper_scheduler_attach::improper_scheduler_attach(char const *)
+78AE8154	func	??0improper_scheduler_attach@Concurrency@@QAE@XZ	public: __thiscall Concurrency::improper_scheduler_attach::improper_scheduler_attach(void)
+78AE8178	func	??0improper_scheduler_detach@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::improper_scheduler_detach::improper_scheduler_detach(char const *)
+78AE8196	func	??0improper_scheduler_detach@Concurrency@@QAE@XZ	public: __thiscall Concurrency::improper_scheduler_detach::improper_scheduler_detach(void)
+78AE81BA	func	??0improper_scheduler_reference@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::improper_scheduler_reference::improper_scheduler_reference(char const *)
+78AE81D8	func	??0improper_scheduler_reference@Concurrency@@QAE@XZ	public: __thiscall Concurrency::improper_scheduler_reference::improper_scheduler_reference(void)
+78AE81FC	func	??0default_scheduler_exists@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::default_scheduler_exists::default_scheduler_exists(char const *)
+78AE821A	func	??0default_scheduler_exists@Concurrency@@QAE@XZ	public: __thiscall Concurrency::default_scheduler_exists::default_scheduler_exists(void)
+78AE823E	func	??0context_unblock_unbalanced@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::context_unblock_unbalanced::context_unblock_unbalanced(char const *)
+78AE825C	func	??0context_unblock_unbalanced@Concurrency@@QAE@XZ	public: __thiscall Concurrency::context_unblock_unbalanced::context_unblock_unbalanced(void)
+78AE8280	func	??0context_self_unblock@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::context_self_unblock::context_self_unblock(char const *)
+78AE829E	func	??0context_self_unblock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::context_self_unblock::context_self_unblock(void)
+78AE82C2	func	??0missing_wait@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::missing_wait::missing_wait(char const *)
+78AE82E0	func	??0missing_wait@Concurrency@@QAE@XZ	public: __thiscall Concurrency::missing_wait::missing_wait(void)
+78AE8304	func	??0bad_target@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::bad_target::bad_target(char const *)
+78AE8322	func	??0bad_target@Concurrency@@QAE@XZ	public: __thiscall Concurrency::bad_target::bad_target(void)
+78AE8346	func	??0message_not_found@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::message_not_found::message_not_found(char const *)
+78AE8364	func	??0message_not_found@Concurrency@@QAE@XZ	public: __thiscall Concurrency::message_not_found::message_not_found(void)
+78AE8388	func	??0invalid_link_target@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_link_target::invalid_link_target(char const *)
+78AE83A6	func	??0invalid_link_target@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_link_target::invalid_link_target(void)
+78AE83CA	func	??0invalid_scheduler_policy_key@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_scheduler_policy_key::invalid_scheduler_policy_key(char const *)
+78AE83E8	func	??0invalid_scheduler_policy_key@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_scheduler_policy_key::invalid_scheduler_policy_key(void)
+78AE840C	func	??0invalid_scheduler_policy_value@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_scheduler_policy_value::invalid_scheduler_policy_value(char const *)
+78AE842A	func	??0invalid_scheduler_policy_value@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_scheduler_policy_value::invalid_scheduler_policy_value(void)
+78AE844E	func	??0invalid_scheduler_policy_thread_specification@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_scheduler_policy_thread_specification::invalid_scheduler_policy_thread_specification(char const *)
+78AE846C	func	??0invalid_scheduler_policy_thread_specification@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_scheduler_policy_thread_specification::invalid_scheduler_policy_thread_specification(void)
+78AE8490	func	??0invalid_operation@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_operation::invalid_operation(char const *)
+78AE84AE	func	??0invalid_operation@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_operation::invalid_operation(void)
+78AE84D2	func	??0nested_scheduler_missing_detach@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::nested_scheduler_missing_detach::nested_scheduler_missing_detach(char const *)
+78AE84F0	func	??0nested_scheduler_missing_detach@Concurrency@@QAE@XZ	public: __thiscall Concurrency::nested_scheduler_missing_detach::nested_scheduler_missing_detach(void)
+78AE8514	func	??0operation_timed_out@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::operation_timed_out::operation_timed_out(char const *)
+78AE8532	func	??0operation_timed_out@Concurrency@@QAE@XZ	public: __thiscall Concurrency::operation_timed_out::operation_timed_out(void)
+78AE8556	func	??0invalid_multiple_scheduling@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_multiple_scheduling::invalid_multiple_scheduling(char const *)
+78AE8574	func	??0invalid_multiple_scheduling@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_multiple_scheduling::invalid_multiple_scheduling(void)
+78AE8598	func	??0invalid_oversubscribe_operation@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::invalid_oversubscribe_operation::invalid_oversubscribe_operation(char const *)
+78AE85B6	func	??0invalid_oversubscribe_operation@Concurrency@@QAE@XZ	public: __thiscall Concurrency::invalid_oversubscribe_operation::invalid_oversubscribe_operation(void)
+78AE85DA	func	??0improper_lock@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::improper_lock::improper_lock(char const *)
+78AE85F8	func	??0improper_lock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::improper_lock::improper_lock(void)
+78AE861C	func	??0task_canceled@details@Concurrency@@QAE@PBD@Z	public: __thiscall Concurrency::details::task_canceled::task_canceled(char const *)
+78AE863A	func	??0task_canceled@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::task_canceled::task_canceled(void)
+78AEA88B	func	?_Value@_SpinCount@details@Concurrency@@SAIXZ	public: static unsigned int __cdecl Concurrency::details::_SpinCount::_Value(void)
+78AEA891	func	??0_NonReentrantBlockingLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_NonReentrantBlockingLock::_NonReentrantBlockingLock(void)
+78AEA891	func	??0_ReentrantBlockingLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReentrantBlockingLock::_ReentrantBlockingLock(void)
+78AEA8A7	func	?_Acquire@_NonReentrantBlockingLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_NonReentrantBlockingLock::_Acquire(void)
+78AEA8A7	func	?_Acquire@_ReentrantBlockingLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReentrantBlockingLock::_Acquire(void)
+78AEA8B1	func	??1_NonReentrantBlockingLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_NonReentrantBlockingLock::~_NonReentrantBlockingLock(void)
+78AEA8B1	func	??1_ReentrantBlockingLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReentrantBlockingLock::~_ReentrantBlockingLock(void)
+78AEA8BB	func	??0_ReentrantLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReentrantLock::_ReentrantLock(void)
+78AEA8C8	func	?_Acquire@_ReentrantLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReentrantLock::_Acquire(void)
+78AEA916	func	?_TryAcquire@_NonReentrantBlockingLock@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_NonReentrantBlockingLock::_TryAcquire(void)
+78AEA916	func	?_TryAcquire@_ReentrantBlockingLock@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_ReentrantBlockingLock::_TryAcquire(void)
+78AEA926	func	?_TryAcquire@_ReentrantLock@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_ReentrantLock::_TryAcquire(void)
+78AEA954	func	?_Release@_NonReentrantBlockingLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_NonReentrantBlockingLock::_Release(void)
+78AEA954	func	?_Release@_ReentrantBlockingLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReentrantBlockingLock::_Release(void)
+78AEA95E	func	?_Release@_ReentrantLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReentrantLock::_Release(void)
+78AEA985	func	??0_NonReentrantPPLLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_NonReentrantPPLLock::_NonReentrantPPLLock(void)
+78AEA985	func	??0critical_section@Concurrency@@QAE@XZ	public: __thiscall Concurrency::critical_section::critical_section(void)
+78AEA99C	func	?_Acquire@_NonReentrantPPLLock@details@Concurrency@@QAEXPAX@Z	public: void __thiscall Concurrency::details::_NonReentrantPPLLock::_Acquire(void *)
+78AEA9B3	func	?_Release@_NonReentrantPPLLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_NonReentrantPPLLock::_Release(void)
+78AEA9B8	func	??0_ReentrantPPLLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReentrantPPLLock::_ReentrantPPLLock(void)
+78AEA9D9	func	?_Acquire@_ReentrantPPLLock@details@Concurrency@@QAEXPAX@Z	public: void __thiscall Concurrency::details::_ReentrantPPLLock::_Acquire(void *)
+78AEAA10	func	?_Release@_ReentrantPPLLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReentrantPPLLock::_Release(void)
+78AEAA22	func	??0_ReaderWriterLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReaderWriterLock::_ReaderWriterLock(void)
+78AEAA32	func	?_AcquireRead@_ReaderWriterLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReaderWriterLock::_AcquireRead(void)
+78AEAA61	func	?_ReleaseRead@_ReaderWriterLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReaderWriterLock::_ReleaseRead(void)
+78AEAA69	func	?_AcquireWrite@_ReaderWriterLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReaderWriterLock::_AcquireWrite(void)
+78AEAA90	func	?_ReleaseWrite@_ReaderWriterLock@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_ReaderWriterLock::_ReleaseWrite(void)
+78AEAAA1	func	?_TryAcquireWrite@_ReaderWriterLock@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_ReaderWriterLock::_TryAcquireWrite(void)
+78AEAC0C	func	??0_Scoped_lock@_NonReentrantPPLLock@details@Concurrency@@QAE@AAV123@@Z	public: __thiscall Concurrency::details::_NonReentrantPPLLock::_Scoped_lock::_Scoped_lock(class Concurrency::details::_NonReentrantPPLLock &)
+78AEAC4F	func	??1_Scoped_lock@_NonReentrantPPLLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_NonReentrantPPLLock::_Scoped_lock::~_Scoped_lock(void)
+78AEAC56	func	??0_Scoped_lock@_ReentrantPPLLock@details@Concurrency@@QAE@AAV123@@Z	public: __thiscall Concurrency::details::_ReentrantPPLLock::_Scoped_lock::_Scoped_lock(class Concurrency::details::_ReentrantPPLLock &)
+78AEAC97	func	??1_Scoped_lock@_ReentrantPPLLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_ReentrantPPLLock::_Scoped_lock::~_Scoped_lock(void)
+78AEAC9E	func	?native_handle@critical_section@Concurrency@@QAEAAV12@XZ	public: class Concurrency::critical_section & __thiscall Concurrency::critical_section::native_handle(void)
+78AEACA1	func	?lock@critical_section@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::critical_section::lock(void)
+78AEACD8	func	?try_lock@critical_section@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::critical_section::try_lock(void)
+78AEAD2E	func	?unlock@critical_section@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::critical_section::unlock(void)
+78AEAE80	func	??0scoped_lock@critical_section@Concurrency@@QAE@AAV12@@Z	public: __thiscall Concurrency::critical_section::scoped_lock::scoped_lock(class Concurrency::critical_section &)
+78AEAEC2	func	??1scoped_lock@critical_section@Concurrency@@QAE@XZ	public: __thiscall Concurrency::critical_section::scoped_lock::~scoped_lock(void)
+78AEAECE	func	??0reader_writer_lock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::reader_writer_lock::reader_writer_lock(void)
+78AEAEEB	func	?lock@reader_writer_lock@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::reader_writer_lock::lock(void)
+78AEAF22	func	?try_lock@reader_writer_lock@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::reader_writer_lock::try_lock(void)
+78AEAF92	func	?lock_read@reader_writer_lock@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::reader_writer_lock::lock_read(void)
+78AEB087	func	?try_lock_read@reader_writer_lock@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::reader_writer_lock::try_lock_read(void)
+78AEB0AF	func	?unlock@reader_writer_lock@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::reader_writer_lock::unlock(void)
+78AEB2BD	func	??0scoped_lock@reader_writer_lock@Concurrency@@QAE@AAV12@@Z	public: __thiscall Concurrency::reader_writer_lock::scoped_lock::scoped_lock(class Concurrency::reader_writer_lock &)
+78AEB2FF	func	??1scoped_lock@reader_writer_lock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::reader_writer_lock::scoped_lock::~scoped_lock(void)
+78AEB2FF	func	??1scoped_lock_read@reader_writer_lock@Concurrency@@QAE@XZ	public: __thiscall Concurrency::reader_writer_lock::scoped_lock_read::~scoped_lock_read(void)
+78AEB306	func	??0scoped_lock_read@reader_writer_lock@Concurrency@@QAE@AAV12@@Z	public: __thiscall Concurrency::reader_writer_lock::scoped_lock_read::scoped_lock_read(class Concurrency::reader_writer_lock &)
+78AEB4C5	func	??4__non_rtti_object@std@@QAEAAV01@ABV01@@Z	public: class std::__non_rtti_object & __thiscall std::__non_rtti_object::operator=(class std::__non_rtti_object const &)
+78AEB4C5	func	??4bad_cast@std@@QAEAAV01@ABV01@@Z	public: class std::bad_cast & __thiscall std::bad_cast::operator=(class std::bad_cast const &)
+78AEB4C5	func	??4bad_typeid@std@@QAEAAV01@ABV01@@Z	public: class std::bad_typeid & __thiscall std::bad_typeid::operator=(class std::bad_typeid const &)
+78AEB4DC	func	??_Fbad_cast@std@@QAEXXZ	public: void __thiscall std::bad_cast::`default ctor closure'(void)
+78AEB4F1	func	??_Fbad_typeid@std@@QAEXXZ	public: void __thiscall std::bad_typeid::`default ctor closure'(void)
+78AEB507	func	?GetOSVersion@Concurrency@@YA?AW4OSVersion@IResourceManager@1@XZ	enum Concurrency::IResourceManager::OSVersion __cdecl Concurrency::GetOSVersion(void)
+78AEB54E	func	?CreateResourceManager@Concurrency@@YAPAUIResourceManager@1@XZ	struct Concurrency::IResourceManager * __cdecl Concurrency::CreateResourceManager(void)
+78AEB558	func	?GetProcessorCount@Concurrency@@YAIXZ	unsigned int __cdecl Concurrency::GetProcessorCount(void)
+78AEB562	func	?GetProcessorNodeCount@Concurrency@@YAIXZ	unsigned int __cdecl Concurrency::GetProcessorNodeCount(void)
+78AEB5B5	func	?GetSchedulerId@Concurrency@@YAIXZ	unsigned int __cdecl Concurrency::GetSchedulerId(void)
+78AEB5C5	func	?GetExecutionContextId@Concurrency@@YAIXZ	unsigned int __cdecl Concurrency::GetExecutionContextId(void)
+78AEFBE3	func	?Create@Scheduler@Concurrency@@SAPAV12@ABVSchedulerPolicy@2@@Z	public: static class Concurrency::Scheduler * __cdecl Concurrency::Scheduler::Create(class Concurrency::SchedulerPolicy const &)
+78AEFC04	func	?SetDefaultSchedulerPolicy@Scheduler@Concurrency@@SAXABVSchedulerPolicy@2@@Z	public: static void __cdecl Concurrency::Scheduler::SetDefaultSchedulerPolicy(class Concurrency::SchedulerPolicy const &)
+78AEFC0F	func	?ResetDefaultSchedulerPolicy@Scheduler@Concurrency@@SAXXZ	public: static void __cdecl Concurrency::Scheduler::ResetDefaultSchedulerPolicy(void)
+78AF1E94	func	??0SchedulerPolicy@Concurrency@@QAE@XZ	public: __thiscall Concurrency::SchedulerPolicy::SchedulerPolicy(void)
+78AF1EA7	func	??0SchedulerPolicy@Concurrency@@QAA@IZZ	public: __cdecl Concurrency::SchedulerPolicy::SchedulerPolicy(unsigned int, ...)
+78AF20A0	func	??0SchedulerPolicy@Concurrency@@QAE@ABV01@@Z	public: __thiscall Concurrency::SchedulerPolicy::SchedulerPolicy(class Concurrency::SchedulerPolicy const &)
+78AF20C8	func	??4SchedulerPolicy@Concurrency@@QAEAAV01@ABV01@@Z	public: class Concurrency::SchedulerPolicy & __thiscall Concurrency::SchedulerPolicy::operator=(class Concurrency::SchedulerPolicy const &)
+78AF20E8	func	??1SchedulerPolicy@Concurrency@@QAE@XZ	public: __thiscall Concurrency::SchedulerPolicy::~SchedulerPolicy(void)
+78AF20F1	func	?GetPolicyValue@SchedulerPolicy@Concurrency@@QBEIW4PolicyElementKey@2@@Z	public: unsigned int __thiscall Concurrency::SchedulerPolicy::GetPolicyValue(enum Concurrency::PolicyElementKey) const
+78AF2133	func	?SetPolicyValue@SchedulerPolicy@Concurrency@@QAEIW4PolicyElementKey@2@I@Z	public: unsigned int __thiscall Concurrency::SchedulerPolicy::SetPolicyValue(enum Concurrency::PolicyElementKey, unsigned int)
+78AF21D0	func	?SetConcurrencyLimits@SchedulerPolicy@Concurrency@@QAEXII@Z	public: void __thiscall Concurrency::SchedulerPolicy::SetConcurrencyLimits(unsigned int, unsigned int)
+78AF4A13	func	?Alloc@Concurrency@@YAPAXI@Z	void * __cdecl Concurrency::Alloc(unsigned int)
+78AF4A5F	func	?Free@Concurrency@@YAXPAX@Z	void __cdecl Concurrency::Free(void *)
+78AF4CA3	func	?_Schedule@_StructuredTaskCollection@details@Concurrency@@QAEXPAV_UnrealizedChore@23@@Z	public: void __thiscall Concurrency::details::_StructuredTaskCollection::_Schedule(class Concurrency::details::_UnrealizedChore *)
+78AF4D30	func	?_RunAndWait@_StructuredTaskCollection@details@Concurrency@@QAG?AW4_TaskCollectionStatus@23@PAV_UnrealizedChore@23@@Z	public: enum Concurrency::details::_TaskCollectionStatus __stdcall Concurrency::details::_StructuredTaskCollection::_RunAndWait(class Concurrency::details::_UnrealizedChore *)
+78AF4F04	func	?_Abort@_StructuredTaskCollection@details@Concurrency@@AAEXXZ	private: void __thiscall Concurrency::details::_StructuredTaskCollection::_Abort(void)
+78AF4FC7	func	?_Cancel@_StructuredTaskCollection@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_StructuredTaskCollection::_Cancel(void)
+78AF5066	func	?_IsCanceling@_StructuredTaskCollection@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_StructuredTaskCollection::_IsCanceling(void)
+78AF51BA	func	??0_TaskCollection@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_TaskCollection::_TaskCollection(void)
+78AF529A	func	??1_TaskCollection@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_TaskCollection::~_TaskCollection(void)
+78AF5609	func	?_Schedule@_TaskCollection@details@Concurrency@@QAEXPAV_UnrealizedChore@23@@Z	public: void __thiscall Concurrency::details::_TaskCollection::_Schedule(class Concurrency::details::_UnrealizedChore *)
+78AF57C6	func	?_RunAndWait@_TaskCollection@details@Concurrency@@QAG?AW4_TaskCollectionStatus@23@PAV_UnrealizedChore@23@@Z	public: enum Concurrency::details::_TaskCollectionStatus __stdcall Concurrency::details::_TaskCollection::_RunAndWait(class Concurrency::details::_UnrealizedChore *)
+78AF5CB5	func	?_Cancel@_TaskCollection@details@Concurrency@@QAEXXZ	public: void __thiscall Concurrency::details::_TaskCollection::_Cancel(void)
+78AF5E2C	func	?_IsCanceling@_TaskCollection@details@Concurrency@@QAE_NXZ	public: bool __thiscall Concurrency::details::_TaskCollection::_IsCanceling(void)
+78AF70FD	func	??0_Timer@details@Concurrency@@IAE@I_N@Z	protected: __thiscall Concurrency::details::_Timer::_Timer(unsigned int, bool)
+78AF711E	func	?_Start@_Timer@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_Timer::_Start(void)
+78AF7182	func	??1_Timer@details@Concurrency@@IAE@XZ	protected: __thiscall Concurrency::details::_Timer::~_Timer(void)
+78AF718F	func	?_Stop@_Timer@details@Concurrency@@IAEXXZ	protected: void __thiscall Concurrency::details::_Timer::_Stop(void)
+78AF71D5	func	?wait@Concurrency@@YAXI@Z	void __cdecl Concurrency::wait(unsigned int)
+78AF7580	func	?EnableTracing@Concurrency@@YAJXZ	long __cdecl Concurrency::EnableTracing(void)
+78AF75F8	func	?DisableTracing@Concurrency@@YAJXZ	long __cdecl Concurrency::DisableTracing(void)
+78AF765F	func	?_Trace_ppl_function@Concurrency@@YAXABU_GUID@@EW4ConcRT_EventType@1@@Z	void __cdecl Concurrency::_Trace_ppl_function(struct _GUID const &, unsigned char, enum Concurrency::ConcRT_EventType)
+78AFA6CF	func	?_UnderlyingYield@details@Concurrency@@YAXXZ	void __cdecl Concurrency::details::_UnderlyingYield(void)
+78AFA728	func	?_ConcRT_Assert@details@Concurrency@@YAXPBD0H@Z	void __cdecl Concurrency::details::_ConcRT_Assert(char const *, char const *, int)
+78AFA8F6	func	?_ConcRT_CoreAssert@details@Concurrency@@YAXPBD0H@Z	void __cdecl Concurrency::details::_ConcRT_CoreAssert(char const *, char const *, int)
+78AFA8FC	func	?_ConcRT_DumpMessage@details@Concurrency@@YAXPB_WZZ	void __cdecl Concurrency::details::_ConcRT_DumpMessage(wchar_t const *, ...)
+78AFA955	func	?_ConcRT_Trace@details@Concurrency@@YAXHPB_WZZ	void __cdecl Concurrency::details::_ConcRT_Trace(int, wchar_t const *, ...)
+78AFA9F6	func	??0_SpinLock@details@Concurrency@@QAE@ACJ@Z	public: __thiscall Concurrency::details::_SpinLock::_SpinLock(long volatile &)
+78AFAA3E	func	??1_SpinLock@details@Concurrency@@QAE@XZ	public: __thiscall Concurrency::details::_SpinLock::~_SpinLock(void)
+78AFAA45	func	?Log2@details@Concurrency@@YAKI@Z	unsigned long __cdecl Concurrency::details::Log2(unsigned int)
+78AFB5E2	func	?_set_new_handler@@YAP6AHI@ZP6AHI@Z@Z	int (__cdecl * __cdecl _set_new_handler(int (__cdecl *)(unsigned int)))(unsigned int)
+78AFB619	func	?_set_new_handler@@YAP6AHI@ZH@Z	int (__cdecl * __cdecl _set_new_handler(int))(unsigned int)
+78AFB622	func	?_query_new_handler@@YAP6AHI@ZXZ	int (__cdecl * __cdecl _query_new_handler(void))(unsigned int)
+78AFB62F	func	_callnewh	
+78AFB657	func	?set_new_handler@@YAP6AXXZP6AXXZ@Z	void (__cdecl * __cdecl set_new_handler(void (__cdecl *)(void)))(void)
+78AFB662	func	?_set_new_mode@@YAHH@Z	int __cdecl _set_new_mode(int)
+78AFB695	func	_set_error_mode	
+78AFB8B0	func	?__ExceptionPtrCreate@@YAXPAX@Z	void __cdecl __ExceptionPtrCreate(void *)
+78AFB8C5	func	?__ExceptionPtrCompare@@YA_NPBX0@Z	bool __cdecl __ExceptionPtrCompare(void const *, void const *)
+78AFB8DB	func	?__ExceptionPtrRethrow@@YAXPBX@Z	void __cdecl __ExceptionPtrRethrow(void const *)
+78AFBA0A	func	?__ExceptionPtrDestroy@@YAXPAX@Z	void __cdecl __ExceptionPtrDestroy(void *)
+78AFBA7B	func	?__ExceptionPtrCopy@@YAXPAXPBX@Z	void __cdecl __ExceptionPtrCopy(void *, void const *)
+78AFBAAC	func	?__ExceptionPtrAssign@@YAXPAXPBX@Z	void __cdecl __ExceptionPtrAssign(void *, void const *)
+78AFBC06	func	?__ExceptionPtrCurrentException@@YAXPAX@Z	void __cdecl __ExceptionPtrCurrentException(void *)
+78AFBC44	func	?__ExceptionPtrCopyException@@YAXPAXPBX1@Z	void __cdecl __ExceptionPtrCopyException(void *, void const *, void const *)
+78AFBC87	func	__setusermatherr	
+78AFBF06	func	_get_pgmptr	
+78AFBF36	func	_exit	
+78AFBF4C	func	_c_exit	
+78AFBF5B	func	_amsg_exit	
+78AFC27D	func	__p__acmdln	
+78AFC283	func	__p__wcmdln	
+78AFC289	func	__p___argc	
+78AFC28F	func	__p___argv	
+78AFC295	func	__p___wargv	
+78AFC29B	func	__p__daylight	
+78AFC2A0	func	__p__dstbias	
+78AFC2A5	func	__p__environ	
+78AFC2AB	func	__p__wenviron	
+78AFC2B1	func	__p___initenv	
+78AFC2B7	func	__p___winitenv	
+78AFC2BD	func	__p__mbctype	
+78AFC2C3	func	__p__mbcasemap	
+78AFC2C9	func	__p___mb_cur_max	
+78AFC2F1	func	__p__pctype	
+78AFC319	func	__p__pwctype	
+78AFC31F	func	__p__pgmptr	
+78AFC325	func	__p__wpgmptr	
+78AFC32B	func	__p__timezone	
+78AFC330	func	__p__tzname	
+78AFC38C	func	_endthread	
+78AFC475	func	_beginthread	
+78AFC51C	func	_endthreadex	
+78AFC601	func	_beginthreadex	
+78AFC6AA	func	___fls_getvalue@4	
+78AFC6C4	func	__get_flsindex	
+78AFC6C4	func	__get_tlsindex	
+78AFC6CA	func	___fls_setvalue@8	
+78AFC728	func	__threadid	
+78AFC72E	func	__threadhandle	
+78AFCDD9	func	_atol_l	
+78AFCDF2	func	_atoi_l	
+78AFCDFA	func	_atoi64	
+78AFCE10	func	_atoi64_l	
+78AFCE29	func	_swab	
+78AFCE78	func	_wtol_l	
+78AFCE91	func	_wtoi_l	
+78AFCE99	func	_wtoi64	
+78AFCEAF	func	_wtoi64_l	
+78AFCF0B	func	_itoa	
+78AFCF35	func	_ltoa	
+78AFCF5C	func	_ultoa	
+78AFCFE5	func	_i64toa	
+78AFD018	func	_ui64toa	
+78AFD121	func	_i64toa_s	
+78AFD156	func	_ui64toa_s	
+78AFD175	func	_ultow	
+78AFD212	func	_i64tow	
+78AFD245	func	_ui64tow	
+78AFD361	func	_i64tow_s	
+78AFD396	func	_ui64tow_s	
+78AFD3B5	func	_getdrives	
+78AFD3BB	func	_getdiskfree	
+78AFD45F	func	_findclose	
+78AFD4FF	func	_findfirst32	
+78AFD61D	func	_findnext32	
+78AFD742	func	_findfirst64	
+78AFD87D	func	_findnext64	
+78AFDA38	func	_findfirst64i32	
+78AFDB5F	func	_findnext64i32	
+78AFDC8D	func	_findfirst32i64	
+78AFDDBF	func	_findnext32i64	
+78AFDEF5	func	_seterrormode	
+78AFDF05	func	_sleep	
+78AFDF22	func	_beep	
+78AFDF35	func	_wfindfirst32	
+78AFE053	func	_wfindnext32	
+78AFE178	func	_wfindfirst64	
+78AFE2B3	func	_wfindnext64	
+78AFE3F2	func	_wfindfirst64i32	
+78AFE519	func	_wfindnext64i32	
+78AFE647	func	_wfindfirst32i64	
+78AFE779	func	_wfindnext32i64	
+78AFE8AF	func	_access_s	
+78AFE92E	func	_access	
+78AFE946	func	_chmod	
+78AFE9AB	func	_chdir	
+78AFEAD4	func	_set_errno	
+78AFEAF5	func	_get_errno	
+78AFEB1A	func	_set_doserrno	
+78AFEB3B	func	_get_doserrno	
+78AFEB60	func	_chdrive	
+78AFEC76	func	_getdcwd_nolock	
+78AFED9A	func	_getcwd	
+78AFEE04	func	_getdcwd	
+78AFEE6C	func	_getpid	
+78AFEE72	func	_mkdir	
+78AFEEA4	func	rename	
+78AFEED7	func	_rmdir	
+78AFEFE1	func	_stat32	
+78AFF40B	func	_stat64	
+78AFF8B5	func	_stat64i32	
+78AFFD86	func	_stat32i64	
+78B001A3	func	remove	
+78B001D3	func	_unlink	
+78B001DB	func	_wchdir	
+78B00307	func	_wchmod	
+78B0036C	func	_wgetdcwd_nolock	
+78B004A8	func	_wgetcwd	
+78B00514	func	_wgetdcwd	
+78B0057C	func	_wmkdir	
+78B005AE	func	_wrename	
+78B005E1	func	_wrmdir	
+78B00702	func	_wstat32	
+78B00B33	func	_wstat64	
+78B00F84	func	_wstat32i64	
+78B01953	func	_execl	
+78B01995	func	_execle	
+78B019E4	func	_execlp	
+78B01A24	func	_execlpe	
+78B01A73	func	_execv	
+78B01B2B	func	_execve	
+78B01D0E	func	_execvp	
+78B01D25	func	_execvpe	
+78B01F7D	func	_getdllprocaddr	
+78B01FAE	func	_loaddll	
+78B01FBE	func	_unloaddll	
+78B01FDB	func	_spawnl	
+78B02020	func	_spawnle	
+78B02072	func	_spawnlp	
+78B020B6	func	_spawnlpe	
+78B02108	func	_spawnv	
+78B021C4	func	_spawnve	
+78B023AD	func	_spawnvp	
+78B023C7	func	_spawnvpe	
+78B02632	func	system	
+78B02713	func	_cwait	
+78B027A4	func	_wexecl	
+78B027E8	func	_wexecle	
+78B02839	func	_wexeclp	
+78B0287B	func	_wexeclpe	
+78B028CC	func	_wexecv	
+78B02986	func	_wexecve	
+78B02B6E	func	_wexecvp	
+78B02B85	func	_wexecvpe	
+78B02D83	func	_wspawnl	
+78B02DCA	func	_wspawnle	
+78B02E1E	func	_wspawnlp	
+78B02E64	func	_wspawnlpe	
+78B02EB8	func	_wspawnv	
+78B02F04	func	_wsystem	
+78B02FEA	func	_mbclen_l	
+78B03016	func	_mbclen	
+78B0303E	func	_mbsinc_l	
+78B03065	func	_mbsinc	
+78B030A0	func	_mbsninc_l	
+78B030C5	func	_mbsninc	
+78B030DC	func	_mbctohira_l	
+78B03117	func	_mbctohira	
+78B0312A	func	_mbctokata_l	
+78B03156	func	_mbctokata	
+78B03169	func	feof	
+78B03191	func	ferror	
+78B031B9	func	fgetc	
+78B031B9	func	getc	
+78B032CC	func	_getc_nolock	
+78B032EC	func	_fgetchar	
+78B032F9	func	getchar	
+78B032FB	func	fgets	
+78B03454	func	fgetwc	
+78B034DC	func	getwc	
+78B034E7	func	_fgetwchar	
+78B034F4	func	getwchar	
+78B034F6	func	fputc	
+78B034F6	func	putc	
+78B03614	func	fputs	
+78B0373C	func	_fputchar	
+78B03756	func	putchar	
+78B0375E	func	putwc	
+78B03769	func	_fputwchar	
+78B03783	func	putwchar	
+78B03A3C	func	clearerr_s	
+78B03AFC	func	clearerr	
+78B03B07	func	_fdopen	
+78B03C94	func	fgetpos	
+78B03CEF	func	_fsopen	
+78B03DCC	func	fopen	
+78B03DE3	func	fopen_s	
+78B03E2A	func	fprintf	
+78B03F54	func	_fprintf_l	
+78B03F70	func	_fprintf_s_l	
+78B03F8C	func	fprintf_s	
+78B03FA7	func	_fprintf_p_l	
+78B03FC3	func	_fprintf_p	
+78B03FDE	func	_fread_nolock	
+78B040EC	func	freopen	
+78B04112	func	freopen_s	
+78B0424C	func	fscanf	
+78B0426C	func	_fscanf_l	
+78B0428D	func	fscanf_s	
+78B042AD	func	_fscanf_s_l	
+78B042CE	func	_fseeki64_nolock	
+78B0436A	func	_fseeki64	
+78B0440C	func	fsetpos	
+78B04447	func	_ftelli64_nolock	
+78B04791	func	_ftelli64	
+78B0481C	func	fwprintf	
+78B048C4	func	_fwprintf_l	
+78B048E0	func	_fwprintf_s_l	
+78B048FC	func	fwprintf_s	
+78B04917	func	_fwprintf_p_l	
+78B04933	func	_fwprintf_p	
+78B049EC	func	fwscanf	
+78B04A0C	func	_fwscanf_l	
+78B04A2D	func	fwscanf_s	
+78B04A4D	func	_fwscanf_s_l	
+78B04C8C	func	gets_s	
+78B04CA3	func	gets	
+78B04CB9	func	_getw	
+78B04EEC	func	_getws_s	
+78B04F03	func	_getws	
+78B04F19	func	_set_output_format	
+78B04F4B	func	_get_output_format	
+78B04FAF	func	_popen	
+78B0549C	func	_pclose	
+78B05584	func	printf	
+78B0564C	func	_printf_l	
+78B05665	func	_printf_s_l	
+78B0567E	func	printf_s	
+78B05696	func	_printf_p_l	
+78B056AF	func	_printf_p	
+78B056C7	func	_set_printf_count_output	
+78B056F1	func	_get_printf_count_output	
+78B05707	func	puts	
+78B05874	func	_putw	
+78B0593C	func	_putws	
+78B05AD4	func	scanf	
+78B05AF1	func	_scanf_l	
+78B05B0F	func	scanf_s	
+78B05B2C	func	_scanf_s_l	
+78B05B4A	func	_setmaxstdio	
+78B05C5C	func	_getmaxstdio	
+78B05C62	func	setbuf	
+78B05C8A	func	_snprintf	
+78B05D36	func	_snprintf_l	
+78B05D55	func	_snprintf_c	
+78B05E11	func	_snprintf_c_l	
+78B05E97	func	_snscanf	
+78B05EBC	func	_snscanf_l	
+78B05EE2	func	_snscanf_s	
+78B05F07	func	_snscanf_s_l	
+78B05F2D	func	_snwprintf_l	
+78B05FBB	func	_snwscanf	
+78B05FE0	func	_snwscanf_l	
+78B06006	func	_snwscanf_s	
+78B0602B	func	_snwscanf_s_l	
+78B06051	func	sprintf	
+78B060D5	func	_sprintf_l	
+78B060F1	func	_sprintf_s_l	
+78B06110	func	_snprintf_s	
+78B06131	func	_snprintf_s_l	
+78B06153	func	_sprintf_p	
+78B06171	func	_sprintf_p_l	
+78B06190	func	_scprintf	
+78B061A5	func	_scprintf_p	
+78B061BA	func	_scprintf_l	
+78B061D3	func	_scprintf_p_l	
+78B061EC	func	sscanf	
+78B0620E	func	_sscanf_l	
+78B06231	func	_sscanf_s_l	
+78B06254	func	_swprintf	
+78B062F3	func	__swprintf_l	
+78B0630F	func	_swprintf_p	
+78B0632D	func	_swprintf_s_l	
+78B0634C	func	_snwprintf_s_l	
+78B0636E	func	_swprintf_p_l	
+78B0638D	func	_scwprintf	
+78B063A2	func	_scwprintf_p	
+78B063B7	func	_scwprintf_l	
+78B063D0	func	_scwprintf_p_l	
+78B063E9	func	?swprintf@@YAHPAGIPBGZZ	int __cdecl swprintf(unsigned short *, unsigned int, unsigned short const *, ...)
+78B06407	func	?swprintf@@YAHPA_WIPB_WZZ	int __cdecl swprintf(wchar_t *, unsigned int, wchar_t const *, ...)
+78B06496	func	_swprintf_c	
+78B0657E	func	_swprintf_c_l	
+78B0659D	func	swscanf	
+78B065BF	func	_swscanf_l	
+78B065E2	func	_swscanf_s_l	
+78B06605	func	_tempnam	
+78B06B34	func	tmpnam_s	
+78B06B6F	func	tmpnam	
+78B06DAC	func	tmpfile	
+78B06DC8	func	tmpfile_s	
+78B06DDB	func	ungetc	
+78B06E64	func	ungetwc	
+78B06F9C	func	_vprintf_l	
+78B06FB9	func	_vprintf_s_l	
+78B06FD6	func	_vprintf_p_l	
+78B06FF3	func	vprintf	
+78B0700F	func	vprintf_s	
+78B0702B	func	_vprintf_p	
+78B07174	func	_vfprintf_l	
+78B07194	func	_vfprintf_s_l	
+78B071B4	func	_vfprintf_p_l	
+78B071D4	func	vfprintf	
+78B071F3	func	vfprintf_s	
+78B07212	func	_vfprintf_p	
+78B07231	func	_vfwprintf_l	
+78B07251	func	_vfwprintf_s_l	
+78B07271	func	_vfwprintf_p_l	
+78B07291	func	vfwprintf_s	
+78B072B0	func	_vfwprintf_p	
+78B072CF	func	_vsprintf_l	
+78B07353	func	vsprintf	
+78B0736D	func	_vscprintf	
+78B07389	func	_vscprintf_l	
+78B073A6	func	_vscprintf_p	
+78B073C2	func	_vscprintf_p_l	
+78B073DF	func	_vsnprintf_l	
+78B0748B	func	_vsnprintf	
+78B074A8	func	_vsnprintf_c	
+78B074D1	func	_vsnprintf_c_l	
+78B074FB	func	_vsnprintf_s_l	
+78B075E7	func	_vsnprintf_s	
+78B07607	func	_vsprintf_p	
+78B07630	func	_vsprintf_p_l	
+78B0765A	func	_vswprintf_l	
+78B076FA	func	_vswprintf	
+78B07714	func	__vswprintf_l	
+78B0771F	func	_vscwprintf_l	
+78B0773C	func	_vscwprintf_p	
+78B07758	func	_vscwprintf_p_l	
+78B07805	func	?vswprintf@@YAHPA_WIPB_WPAD@Z	int __cdecl vswprintf(wchar_t *, unsigned int, wchar_t const *, char *)
+78B07822	func	_vswprintf_c	
+78B0784B	func	_vsnwprintf_s	
+78B0786B	func	_vswprintf_p	
+78B07894	func	_vswprintf_p_l	
+78B078BE	func	_vwprintf_l	
+78B078DB	func	_vwprintf_s_l	
+78B078F8	func	_vwprintf_p_l	
+78B07915	func	vwprintf	
+78B07931	func	vwprintf_s	
+78B0794D	func	_vwprintf_p	
+78B07969	func	_wfdopen	
+78B07B04	func	_wfopen	
+78B07C0C	func	_wfreopen	
+78B07C32	func	_wfreopen_s	
+78B07C55	func	_wpopen	
+78B08154	func	wprintf	
+78B0821C	func	_wprintf_l	
+78B08235	func	_wprintf_s_l	
+78B0824E	func	wprintf_s	
+78B08266	func	_wprintf_p_l	
+78B0827F	func	_wprintf_p	
+78B08297	func	wscanf	
+78B082B4	func	_wscanf_l	
+78B082D2	func	wscanf_s	
+78B082EF	func	_wscanf_s_l	
+78B0830D	func	_wtempnam	
+78B08804	func	_wtmpnam_s	
+78B0883F	func	_wtmpnam	
+78B08866	func	__strncnt	
+78B08887	func	_strset_s	
+78B088D2	func	_strnset_s	
+78B08942	func	strtok	
+78B089FF	func	strtok_s	
+78B08ADF	func	wcscat	
+78B08B10	func	wcscpy	
+78B08B31	func	wcscmp	
+78B08B6F	func	wcsncat	
+78B08BB3	func	__wcsncnt	
+78B08BD7	func	_wcsnset	
+78B08C03	func	_wcsnset_s	
+78B08C7F	func	_wcsrev	
+78B08CB9	func	_wcsset	
+78B08CD7	func	_wcsset_s	
+78B08D4F	func	wmemmove_s	
+78B08DA4	func	asctime	
+78B08F82	func	clock	
+78B08FBC	func	_ctime32_s	
+78B09037	func	_ctime32	
+78B0909C	func	_difftime32	
+78B090C8	func	_difftime64	
+78B0930F	func	_ftime32_s	
+78B09463	func	_ftime32	
+78B0946E	func	_gmtime32_s	
+78B095E5	func	_gmtime32	
+78B0960C	func	_localtime32_s	
+78B09812	func	_localtime32	
+78B09A7E	func	_mktime32	
+78B09A90	func	_mkgmtime32	
+78B09AA2	func	_strdate_s	
+78B09B5A	func	_strdate	
+78B09B76	func	_strtime_s	
+78B09C24	func	_strtime	
+78B09C40	func	_time32	
+78B09C8E	func	_get_tzname	
+78B09D20	func	_futime32	
+78B09ED3	func	_utime32	
+78B09F4C	func	_ctime64	
+78B0A220	func	_ftime64_s	
+78B0A390	func	_ftime64	
+78B0A39B	func	_gmtime64	
+78B0A3C2	func	_localtime64	
+78B0A698	func	_mktime64	
+78B0A6AA	func	_mkgmtime64	
+78B0A6BC	func	_getsystime	
+78B0A746	func	_setsystime	
+78B0A7CF	func	_futime64	
+78B0A988	func	_utime64	
+78B0AA01	func	_wasctime_s	
+78B0ABF6	func	_wasctime	
+78B0ADFD	func	_wctime32_s	
+78B0AE79	func	_wctime32	
+78B0AEDE	func	_wctime64_s	
+78B0AF74	func	_wctime64	
+78B0AFE1	func	_wstrdate_s	
+78B0B0AA	func	_wstrdate	
+78B0B0C6	func	_wstrtime_s	
+78B0B186	func	_wstrtime	
+78B0B1A2	func	_wutime32	
+78B0B21B	func	_wutime64	
+78B0B294	func	_isalpha_l	
+78B0B2EA	func	isalpha	
+78B0B31A	func	_isupper_l	
+78B0B36B	func	isupper	
+78B0B399	func	_islower_l	
+78B0B3EA	func	islower	
+78B0B418	func	_isxdigit_l	
+78B0B46E	func	isxdigit	
+78B0B49E	func	_ispunct_l	
+78B0B4EF	func	ispunct	
+78B0B51D	func	_isprint_l	
+78B0B573	func	_isgraph_l	
+78B0B5C9	func	isgraph	
+78B0B5F9	func	_iscntrl_l	
+78B0B64A	func	iscntrl	
+78B0B678	func	__isascii	
+78B0B68A	func	__toascii	
+78B0B697	func	__iscsymf	
+78B0B6B6	func	__iscsym	
+78B0B6D7	func	_mbstrlen_l	
+78B0B77D	func	_mbstrlen	
+78B0B79F	func	_mbstrnlen_l	
+78B0B88D	func	_mbstrnlen	
+78B0B8A4	func	_iswalpha_l	
+78B0B8A4	func	iswalpha	
+78B0B8BA	func	_iswupper_l	
+78B0B8BA	func	iswupper	
+78B0B8CD	func	_iswlower_l	
+78B0B8CD	func	iswlower	
+78B0B8E0	func	_iswxdigit_l	
+78B0B8E0	func	iswxdigit	
+78B0B8F6	func	_iswpunct_l	
+78B0B8F6	func	iswpunct	
+78B0B909	func	_iswalnum_l	
+78B0B909	func	iswalnum	
+78B0B91F	func	_iswprint_l	
+78B0B91F	func	iswprint	
+78B0B935	func	_iswgraph_l	
+78B0B935	func	iswgraph	
+78B0B94B	func	_iswcntrl_l	
+78B0B94B	func	iswcntrl	
+78B0B95E	func	__iswcsym	
+78B0B95E	func	_iswcsym_l	
+78B0B984	func	__iswcsymf	
+78B0B984	func	_iswcsymf_l	
+78B0B9AA	func	_atodbl_l	
+78B0BA52	func	_atodbl	
+78B0BA69	func	_atoldbl_l	
+78B0BB12	func	_atoldbl	
+78B0BB29	func	_atoflt	
+78B0BB40	func	__STRINGTOLD	
+78B0BBE3	func	_fcvt_s	
+78B0BC7F	func	_fcvt	
+78B0BD1C	func	_ecvt_s	
+78B0BDBB	func	_ecvt	
+78B0BE1D	func	_gcvt_s	
+78B0BF59	func	_gcvt	
+78B0BF81	func	is_wctype	
+78B0BF8C	func	_iswctype_l	
+78B0BFA0	func	_isctype_l	
+78B0C058	func	_isctype	
+78B0C08A	func	_mblen_l	
+78B0C149	func	mblen	
+78B0C2D3	func	_mbstowcs_l	
+78B0C2DE	func	mbstowcs	
+78B0C308	func	_mbstowcs_s_l	
+78B0C408	func	mbstowcs_s	
+78B0C5CC	func	btowc	
+78B0C620	func	mbrlen	
+78B0C655	func	mbrtowc	
+78B0C787	func	mbsrtowcs	
+78B0C792	func	mbsrtowcs_s	
+78B0C832	func	_strtod_l	
+78B0C955	func	strtod	
+78B0C96C	func	_strtol_l	
+78B0C989	func	_strtoul_l	
+78B0CC43	func	_strtoi64	
+78B0CC6E	func	_strtoi64_l	
+78B0CC8B	func	_strtoui64	
+78B0CCB7	func	_strtoui64_l	
+78B0CCD4	func	_tolower	
+78B0CCE1	func	tolower	
+78B0CD0D	func	_toupper	
+78B0CD1A	func	_toupper_l	
+78B0CE30	func	toupper	
+78B0CE5C	func	_towupper_l	
+78B0CF02	func	towupper	
+78B0CFBD	func	wcrtomb_s	
+78B0D033	func	wcrtomb	
+78B0D204	func	wcsrtombs	
+78B0D20F	func	wcsrtombs_s	
+78B0D2A5	func	wctob	
+78B0D301	func	_wcstod_l	
+78B0D409	func	wcstod	
+78B0D6C7	func	_wcstoi64	
+78B0D6F2	func	_wcstoi64_l	
+78B0D70F	func	_wcstoui64	
+78B0D73B	func	_wcstoui64_l	
+78B0D758	func	_wcstombs_l	
+78B0D763	func	wcstombs	
+78B0D77D	func	_wctomb_l	
+78B0D7CE	func	wctomb	
+78B0D800	func	_ismbcalnum_l	
+78B0D8B8	func	_ismbcalnum	
+78B0D8CB	func	_ismbcalpha_l	
+78B0D986	func	_ismbcalpha	
+78B0D999	func	_ismbbkalnum_l	
+78B0D9B2	func	_ismbbkalnum	
+78B0D9CA	func	_ismbbkprint_l	
+78B0D9E3	func	_ismbbkprint	
+78B0D9FB	func	_ismbbkpunct_l	
+78B0DA14	func	_ismbbkpunct	
+78B0DA2C	func	_ismbbalnum_l	
+78B0DA48	func	_ismbbalnum	
+78B0DA63	func	_ismbbalpha_l	
+78B0DA7F	func	_ismbbalpha	
+78B0DA9A	func	_ismbbgraph_l	
+78B0DAB6	func	_ismbbgraph	
+78B0DAD1	func	_ismbbprint_l	
+78B0DAED	func	_ismbbprint	
+78B0DB08	func	_ismbbpunct_l	
+78B0DB21	func	_ismbbpunct	
+78B0DB39	func	_ismbblead_l	
+78B0DB52	func	_ismbbtrail_l	
+78B0DB6B	func	_ismbbtrail	
+78B0DB83	func	_ismbbkana_l	
+78B0DBD8	func	_ismbbkana	
+78B0DBEB	func	_ismbcdigit_l	
+78B0DCB2	func	_ismbcdigit	
+78B0DCC5	func	_ismbcgraph_l	
+78B0DD80	func	_ismbcgraph	
+78B0DD93	func	_ismbchira_l	
+78B0DDD5	func	_ismbchira	
+78B0DDE8	func	_ismbckata_l	
+78B0DE32	func	_ismbckata	
+78B0DE45	func	_ismbcsymbol_l	
+78B0DE8F	func	_ismbcsymbol	
+78B0DEA2	func	_ismbclegal_l	
+78B0DEE9	func	_ismbclegal	
+78B0DEFC	func	_ismbclower_l	
+78B0DFAB	func	_ismbclower	
+78B0DFBE	func	_ismbcprint_l	
+78B0E076	func	_ismbcprint	
+78B0E089	func	_ismbcpunct_l	
+78B0E13C	func	_ismbcpunct	
+78B0E14F	func	_ismbslead_l	
+78B0E1E9	func	_ismbslead	
+78B0E200	func	_ismbcspace_l	
+78B0E2C4	func	_ismbcspace	
+78B0E2D7	func	_ismbstrail_l	
+78B0E36F	func	_ismbstrail	
+78B0E386	func	_ismbcupper_l	
+78B0E431	func	_ismbcupper	
+78B0E444	func	_mbbtype_l	
+78B0E4D6	func	_mbbtype	
+78B0E4ED	func	_mbccpy_l	
+78B0E509	func	_mbccpy	
+78B0E524	func	_mbccpy_s	
+78B0E541	func	_mbccpy_s_l	
+78B0E63F	func	_mbscat_s_l	
+78B0E7E4	func	_mbscpy_s_l	
+78B0E929	func	_mbsnbcat_s_l	
+78B0EB9D	func	_mbsnbcpy_s_l	
+78B0ED85	func	_mbsnbset_s_l	
+78B0EFA2	func	_mbsncat_s_l	
+78B0F207	func	_mbsncpy_s_l	
+78B0F3F3	func	_mbsnset_s_l	
+78B0F5FB	func	_mbsset_s_l	
+78B0F744	func	_ismbcl0_l	
+78B0F79D	func	_ismbcl0	
+78B0F7B0	func	_ismbcl1_l	
+78B0F80F	func	_ismbcl1	
+78B0F822	func	_ismbcl2_l	
+78B0F881	func	_ismbcl2	
+78B0F8C3	func	_mbsbtype_l	
+78B0F956	func	_mbsbtype	
+78B0F96D	func	_mbscat_s	
+78B0F987	func	_mbscmp_l	
+78B0FA86	func	_mbscmp	
+78B0FA9D	func	_mbscpy_s	
+78B0FAB7	func	_mbscoll_l	
+78B0FB59	func	_mbscoll	
+78B0FB70	func	_mbscspn_l	
+78B0FC2C	func	_mbscspn	
+78B0FC43	func	_mbsicmp_l	
+78B0FE3A	func	_mbsicmp	
+78B0FE51	func	_mbsicoll_l	
+78B0FEF3	func	_mbsicoll	
+78B0FF0A	func	_mbslen_l	
+78B0FF61	func	_mbslen	
+78B0FF74	func	_mbsnlen_l	
+78B0FFED	func	_mbsnlen	
+78B10004	func	_mbslwr_s_l	
+78B1010A	func	_mbslwr_s	
+78B10121	func	_mbslwr_l	
+78B10147	func	_mbslwr	
+78B1016C	func	_mbsnbcat_l	
+78B10297	func	_mbsnbcat	
+78B102B1	func	_mbsnbcat_s	
+78B102CE	func	_mbsnbcmp_l	
+78B10419	func	_mbsnbcmp	
+78B10433	func	_mbsnbcnt_l	
+78B104B1	func	_mbsnbcnt	
+78B104C8	func	_mbsnbcoll_l	
+78B1059B	func	_mbsnbcoll	
+78B105B5	func	_mbsnbcpy_l	
+78B10688	func	_mbsnbcpy	
+78B106A2	func	_mbsnbcpy_s	
+78B106BF	func	_mbsnbicmp_l	
+78B108C3	func	_mbsnbicmp	
+78B108DD	func	_mbsnbset_l	
+78B109BD	func	_mbsnbset	
+78B109D7	func	_mbsnbset_s	
+78B109F4	func	_mbsncat_l	
+78B10B0C	func	_mbsncat	
+78B10B26	func	_mbsncat_s	
+78B10B43	func	_mbsnccnt_l	
+78B10BC5	func	_mbsnccnt	
+78B10BDC	func	_mbsncmp_l	
+78B10D18	func	_mbsncmp	
+78B10D32	func	_mbsncoll_l	
+78B10E3B	func	_mbsncoll	
+78B10E55	func	_mbsncpy_l	
+78B10F27	func	_mbsncpy	
+78B10F41	func	_mbsncpy_s	
+78B10F5E	func	_mbsnextc_l	
+78B10FCA	func	_mbsnextc	
+78B10FDD	func	_mbsnicmp_l	
+78B111A8	func	_mbsnicmp	
+78B111C2	func	_mbsnicoll_l	
+78B112CB	func	_mbsnicoll	
+78B112E5	func	_mbsnset_l	
+78B11426	func	_mbsnset	
+78B11440	func	_mbsnset_s	
+78B1145D	func	_mbspbrk_l	
+78B11522	func	_mbspbrk	
+78B11539	func	_mbsrchr_l	
+78B115E3	func	_mbsrchr	
+78B115FA	func	_mbsrev_l	
+78B116B0	func	_mbsrev	
+78B116C3	func	_mbsset_l	
+78B11776	func	_mbsset	
+78B1178D	func	_mbsset_s	
+78B117A7	func	_mbsspn_l	
+78B11863	func	_mbsspn	
+78B1187A	func	_mbsspnp_l	
+78B11940	func	_mbsspnp	
+78B11957	func	_mbsstr_l	
+78B11A81	func	_mbsstr	
+78B11A98	func	_mbstok_l	
+78B11AB9	func	_mbstok	
+78B11AD0	func	_mbstok_s_l	
+78B11C86	func	_mbstok_s	
+78B11CA0	func	_mbsupr_s_l	
+78B11DA6	func	_mbsupr_s	
+78B11DBD	func	_mbsupr_l	
+78B11DE3	func	_mbsupr	
+78B11E08	func	_mbctolower_l	
+78B11EAE	func	_mbctolower	
+78B11EC1	func	_mbctoupper_l	
+78B11F67	func	_mbctoupper	
+78B11F7A	func	_mbcjistojms_l	
+78B12024	func	_mbcjistojms	
+78B12037	func	_mbcjmstojis_l	
+78B12112	func	_mbcjmstojis	
+78B12125	func	_mbbtombc_l	
+78B121C7	func	_mbbtombc	
+78B121DA	func	_mbctombb_l	
+78B1229A	func	_mbctombb	
+78B130FE	func	_cscanf	
+78B13115	func	_cscanf_l	
+78B1412A	func	_cscanf_s	
+78B14141	func	_cscanf_s_l	
+78B150FC	func	_cwscanf	
+78B15113	func	_cwscanf_l	
+78B16200	func	_cwscanf_s	
+78B16217	func	_cwscanf_s_l	
+78B16275	func	_vcprintf_l	
+78B16DBB	func	_cprintf_l	
+78B16DD4	func	_cprintf	
+78B16DEC	func	_vcprintf	
+78B16E18	func	_vcprintf_p_l	
+78B180A5	func	_cprintf_p_l	
+78B180BE	func	_cprintf_p	
+78B180D6	func	_vcprintf_p	
+78B18102	func	_vcprintf_s_l	
+78B18C63	func	_cprintf_s_l	
+78B18C7C	func	_cprintf_s	
+78B18C94	func	_vcprintf_s	
+78B18CCC	func	_vcwprintf_l	
+78B1982F	func	_cwprintf_l	
+78B19848	func	_cwprintf	
+78B19860	func	_vcwprintf	
+78B19877	func	_vcwprintf_p_l	
+78B1AAD7	func	_cwprintf_p_l	
+78B1AAF0	func	_cwprintf_p	
+78B1AB08	func	_vcwprintf_p	
+78B1AB6A	func	_vcwprintf_s_l	
+78B1B6DB	func	_cwprintf_s_l	
+78B1B6F4	func	_cwprintf_s	
+78B1B70C	func	_vcwprintf_s	
+78B20CD8	func	_memicmp_l	
+78B20DA3	func	_memicmp	
+78B20DF7	func	_strcoll_l	
+78B20E95	func	strcoll	
+78B20EE5	func	_stricmp_l	
+78B20FA5	func	_stricmp	
+78B20FEC	func	_stricoll_l	
+78B2108A	func	_stricoll	
+78B210B0	func	_strlwr_l	
+78B210CA	func	_strlwr	
+78B21127	func	_strncoll_l	
+78B211F7	func	_strncoll	
+78B2124A	func	_strnicoll	
+78B213E7	func	_strupr_s_l	
+78B2141C	func	_strupr_s	
+78B21433	func	_strupr_l	
+78B2144D	func	_strupr	
+78B214AA	func	_strxfrm_l	
+78B2160F	func	strxfrm	
+78B21629	func	_wcscoll_l	
+78B216C0	func	wcscoll	
+78B21707	func	_wcsicoll_l	
+78B217DB	func	_wcsicoll	
+78B21866	func	_wcslwr_l	
+78B21880	func	_wcsncoll_l	
+78B2194E	func	_wcsncoll	
+78B219A1	func	_wcsupr_l	
+78B219BB	func	_wcsupr	
+78B21A23	func	_wcsxfrm_l	
+78B21B50	func	wcsxfrm	
+78B21C52	func	_Getdays	
+78B21D4B	func	_Getmonths	
+78B2203E	func	_Gettnames	
+78B22A8E	func	_strftime_l	
+78B22AAE	func	strftime	
+78B22ACD	func	_Strftime	
+78B2354A	func	_wcsftime_l	
+78B2356A	func	wcsftime	
+78B23589	func	??0exception@std@@QAE@XZ	public: __thiscall std::exception::exception(void)
+78B2359A	func	?what@exception@std@@UBEPBDXZ	public: virtual char const * __thiscall std::exception::what(void) const
+78B235BA	func	?_Copy_str@exception@std@@AAEXPBD@Z	private: void __thiscall std::exception::_Copy_str(char const *)
+78B235FA	func	??0exception@std@@QAE@ABQBD@Z	public: __thiscall std::exception::exception(char const *const &)
+78B23621	func	??0bad_cast@std@@QAE@PBD@Z	public: __thiscall std::bad_cast::bad_cast(char const *)
+78B2363F	func	??0bad_cast@std@@AAE@PBQBD@Z	private: __thiscall std::bad_cast::bad_cast(char const *const *)
+78B2365C	func	??0bad_typeid@std@@QAE@PBD@Z	public: __thiscall std::bad_typeid::bad_typeid(char const *)
+78B2367A	func	??0__non_rtti_object@std@@QAE@PBD@Z	public: __thiscall std::__non_rtti_object::__non_rtti_object(char const *)
+78B236E9	func	??0bad_cast@std@@QAE@ABV01@@Z	public: __thiscall std::bad_cast::bad_cast(class std::bad_cast const &)
+78B23706	func	??0bad_typeid@std@@QAE@ABV01@@Z	public: __thiscall std::bad_typeid::bad_typeid(class std::bad_typeid const &)
+78B23723	func	?name@type_info@@QBEPBDPAU__type_info_node@@@Z	public: char const * __thiscall type_info::name(struct __type_info_node *) const
+78B23737	func	?_name_internal_method@type_info@@QBEPBDPAU__type_info_node@@@Z	public: char const * __thiscall type_info::_name_internal_method(struct __type_info_node *) const
+78B2374B	func	?_type_info_dtor_internal_method@type_info@@QAEXXZ	public: void __thiscall type_info::_type_info_dtor_internal_method(void)
+78B23755	func	??8type_info@@QBE_NABV0@@Z	public: bool __thiscall type_info::operator==(class type_info const &) const
+78B23775	func	??9type_info@@QBE_NABV0@@Z	public: bool __thiscall type_info::operator!=(class type_info const &) const
+78B23796	func	?before@type_info@@QBEHABV1@@Z	public: int __thiscall type_info::before(class type_info const &) const
+78B237BA	func	?raw_name@type_info@@QBEPBDXZ	public: char const * __thiscall type_info::raw_name(void) const
+78B2380A	func	?terminate@@YAXXZ	void __cdecl terminate(void)
+78B23864	func	?unexpected@@YAXXZ	void __cdecl unexpected(void)
+78B23874	func	?_inconsistency@@YAXXZ	void __cdecl _inconsistency(void)
+78B2394D	func	__CxxFrameHandler	
+78B2394D	func	__CxxFrameHandler2	
+78B2394D	func	__CxxFrameHandler3	
+78B23983	func	__CxxLongjmpUnwind	
+78B23C19	func	__FrameUnwindFilter	
+78B23DB5	func	__uncaught_exception	
+78B23DC6	func	__CxxDetectRethrow	
+78B23E17	func	__CxxCallUnwindDtor	
+78B23E6C	func	__CxxCallUnwindDelDtor	
+78B23EBC	func	__CxxCallUnwindStdDelDtor	
+78B23F0C	func	__CxxCallUnwindVecDtor	
+78B24027	func	?_is_exception_typeof@@YAHABVtype_info@@PAU_EXCEPTION_POINTERS@@@Z	int __cdecl _is_exception_typeof(class type_info const &, struct _EXCEPTION_POINTERS *)
+78B24278	func	__BuildCatchObjectHelper	
+78B24414	func	__BuildCatchObject	
+78B24CF0	func	?_Name_base@type_info@@CAPBDPBV1@PAU__type_info_node@@@Z	private: static char const * __cdecl type_info::_Name_base(class type_info const *, struct __type_info_node *)
+78B24E04	func	?_Type_info_dtor@type_info@@CAXPAV1@@Z	private: static void __cdecl type_info::_Type_info_dtor(class type_info *)
+78B24E04	func	?_Type_info_dtor_internal@type_info@@CAXPAV1@@Z	private: static void __cdecl type_info::_Type_info_dtor_internal(class type_info *)
+78B24E94	func	__unDNameHelper	
+78B24EC7	func	?_Name_base_internal@type_info@@CAPBDPBV1@PAU__type_info_node@@@Z	private: static char const * __cdecl type_info::_Name_base_internal(class type_info const *, struct __type_info_node *)
+78B24FF4	func	?_ValidateExecute@@YAHP6GHXZ@Z	int __cdecl _ValidateExecute(int (__stdcall *)(void))
+78B24FF4	func	?_ValidateRead@@YAHPBXI@Z	int __cdecl _ValidateRead(void const *, unsigned int)
+78B24FF4	func	?_ValidateWrite@@YAHPAXI@Z	int __cdecl _ValidateWrite(void *, unsigned int)
+78B25006	func	?set_terminate@@YAP6AXXZP6AXXZ@Z	void (__cdecl * __cdecl set_terminate(void (__cdecl *)(void)))(void)
+78B25024	func	_get_terminate	
+78B2502D	func	?set_unexpected@@YAP6AXXZP6AXXZ@Z	void (__cdecl * __cdecl set_unexpected(void (__cdecl *)(void)))(void)
+78B2504B	func	_get_unexpected	
+78B25054	func	?_set_se_translator@@YAP6AXIPAU_EXCEPTION_POINTERS@@@ZP6AXI0@Z@Z	void (__cdecl * __cdecl _set_se_translator(void (__cdecl *)(unsigned int, struct _EXCEPTION_POINTERS *)))(unsigned int, struct _EXCEPTION_POINTERS *)
+78B25078	func	?set_terminate@@YAP6AXXZH@Z	void (__cdecl * __cdecl set_terminate(int))(void)
+78B25091	func	?set_unexpected@@YAP6AXXZH@Z	void (__cdecl * __cdecl set_unexpected(int))(void)
+78B250AA	func	?_set_se_translator@@YAP6AXIPAU_EXCEPTION_POINTERS@@@ZH@Z	void (__cdecl * __cdecl _set_se_translator(int))(unsigned int, struct _EXCEPTION_POINTERS *)
+78B250C3	func	__RTtypeid	
+78B251EE	func	__RTCastToVoid	
+78B254CD	func	__RTDynamicCast	
+78B26653	func	_set_malloc_crt_max_wait	
+78B26668	func	_recalloc_crt	
+78B266CE	func	_get_heap_handle	
+78B266D4	func	_aligned_offset_malloc	
+78B2676C	func	_aligned_msize	
+78B267B5	func	_aligned_free	
+78B267CF	func	_aligned_malloc	
+78B267E6	func	_aligned_offset_realloc	
+78B26972	func	_aligned_offset_recalloc	
+78B269F0	func	_aligned_realloc	
+78B26A0A	func	_aligned_recalloc	
+78B26A27	func	_expand	
+78B26AE1	func	_heapadd	
+78B26AF0	func	_heapchk	
+78B26B11	func	_heapset	
+78B26B13	func	_heapmin	
+78B26B29	func	_heapused	
+78B26B37	func	_heapwalk	
+78B26C74	func	_resetstkoflw	
+78B26DCB	func	_fstat32	
+78B27848	func	_open	
+78B279F4	func	_sopen	
+78B27A26	func	_sopen_s	
+78B27A46	func	_fstat64	
+78B27DCC	func	_fstat64i32	
+78B2813C	func	_fstat32i64	
+78B284A4	func	_wopen	
+78B28574	func	_wsopen	
+78B2862B	func	_lseeki64	
+78B28734	func	_commit	
+78B2882C	func	_pipe	
+78B28B00	func	_open_osfhandle	
+78B28C34	func	_ungetch_nolock	
+78B29050	func	_getch_nolock	
+78B29129	func	_getche_nolock	
+78B29288	func	_ungetch	
+78B292EC	func	_getch	
+78B2934C	func	_getche	
+78B293AC	func	_kbhit	
+78B2940C	func	_getwch_nolock	
+78B294F7	func	_getwche_nolock	
+78B2953A	func	_ungetwch_nolock	
+78B2955F	func	_getwch	
+78B295C4	func	_getwche	
+78B29624	func	_ungetwch	
+78B2968C	func	_putch_nolock	
+78B29708	func	_putch	
+78B2976C	func	_putwch_nolock	
+78B297AE	func	_putwch	
+78B29814	func	?_open@@YAHPBDHH@Z	int __cdecl _open(char const *, int, int)
+78B29841	func	?_sopen@@YAHPBDHHH@Z	int __cdecl _sopen(char const *, int, int, int)
+78B2986F	func	?_wopen@@YAHPB_WHH@Z	int __cdecl _wopen(wchar_t const *, int, int)
+78B2989C	func	?_wsopen@@YAHPB_WHHH@Z	int __cdecl _wsopen(wchar_t const *, int, int, int)
+78B298CA	func	_cgets_s	
+78B299E4	func	_cgets	
+78B29A38	func	_cgetws_s	
+78B29BEC	func	_cgetws	
+78B29DF5	func	_chsize_s	
+78B29EFC	func	_chsize	
+78B29F18	func	_cputs	
+78B29FB4	func	_cputws	
+78B2A094	func	_creat	
+78B2A22C	func	_dup	
+78B2A38A	func	_eof	
+78B2A4BC	func	_filelength	
+78B2A5D4	func	_filelengthi64	
+78B2A7BF	func	_set_fmode	
+78B2A801	func	_setmode	
+78B2A9C9	func	_locking	
+78B2AABC	func	_mktemp_s	
+78B2ABC4	func	_mktemp	
+78B2AC01	func	_tell	
+78B2AC17	func	_telli64	
+78B2AC2F	func	_wcreat	
+78B2AC60	func	_wmktemp_s	
+78B2AD5F	func	_wmktemp	
+78B2AF1F	func	_get_invalid_parameter_handler	
+78B2AF2C	func	_invoke_watson	
+78B2AF51	func	_invalid_parameter	
+78B2AF7E	func	_invalid_parameter_noinfo	
+78B2AF8E	func	_invalid_parameter_noinfo_noreturn	
+78B2AFBC	func	?_invalid_parameter@@YAXPBG00II@Z	void __cdecl _invalid_parameter(unsigned short const *, unsigned short const *, unsigned short const *, unsigned int, unsigned int)
+78B2AFC4	func	_purecall	
+78B2AFEE	func	_get_purecall_handler	
+78B2B100	func	__fpecode	
+78B2B109	func	__pxcptinfoptrs	
+78B2B112	func	signal	
+78B2B374	func	raise	
+78B2B53C	func	rand_s	
+78B2B89B	func	__pwctype_func	
+78B2B8A1	func	_XcptFilter	
+78B2B9EB	func	__CppXcptFilter	
+78B2BA0B	func	getenv_s	
+78B2BAF4	func	_dupenv_s	
+78B2BC81	func	_wgetenv	
+78B2BD1C	func	___mb_cur_max_func	
+78B2BD45	func	___mb_cur_max_l_func	
+78B2BD5E	func	___lc_collate_cp_func	
+78B2BD84	func	___setlc_active_func	
+78B2BD8A	func	___unguarded_readlc_active_add_func	
+78B2BD90	func	_configthreadlocale	
+78B2BDEE	func	_free_locale	
+78B2BED8	func	__free_locale	
+78B2BEE3	func	_get_current_locale	
+78B2BFC0	func	__get_current_locale	
+78B2BFC5	func	_create_locale	
+78B2C0BA	func	__create_locale	
+78B2C0C5	func	__crtLCMapStringW	
+78B2C0F4	func	??_U@YAPAXIHPBDH@Z	void * __cdecl operator new[](unsigned int, int, char const *, int)
+78B2C104	func	_chkesp	
+78B2C11C	func	localeconv	
+78B2C142	func	__lconv_init	
+78B2C16F	func	__report_gsfailure	
+78B2C278	func	__sys_nerr	
+78B2C27E	func	__sys_errlist	
+78B2C2AC	func	__wcserror	
+78B2C394	func	__wcserror_s	
+78B2C433	func	_abs64	
+78B2C433	func	llabs	
+78B2C44D	func	_assert	
+78B2CB26	func	_byteswap_ulong	
+78B2CB53	func	_byteswap_ushort	
+78B2CB69	func	_byteswap_uint64	
+78B2CC04	func	_crt_debugger_hook	
+78B2CC0C	func	_except_handler4_common	
+78B2CD89	func	_lfind	
+78B2CE12	func	_lfind_s	
+78B2CE9F	func	_lrotl	
+78B2CE9F	func	_rotl	
+78B2CEB1	func	_rotl64	
+78B2CEE7	func	_lrotr	
+78B2CEE7	func	_rotr	
+78B2CEF9	func	_rotr64	
+78B2CF2F	func	_lsearch	
+78B2CFC3	func	_lsearch_s	
+78B2D05B	func	_makepath	
+78B2D268	func	_putenv	
+78B2D2CC	func	_putenv_s	
+78B2D35C	func	_searchenv_s	
+78B2D6B8	func	_searchenv	
+78B2D6D5	func	abort	
+78B2D708	func	_set_abort_behavior	
+78B2D921	func	_splitpath	
+78B2D96D	func	_strerror	
+78B2DA35	func	_strerror_s	
+78B2DAD1	func	_umask_s	
+78B2DB12	func	_umask	
+78B2DB53	func	_wassert	
+78B2E38C	func	_wcserror	
+78B2E480	func	_wcserror_s	
+78B2E4E2	func	_wmakepath	
+78B2E502	func	_wperror	
+78B2E634	func	_wputenv	
+78B2E69C	func	_wsearchenv	
+78B2E6B9	func	_wsetlocale	
+78B2E8AC	func	bsearch_s	
+78B2E968	func	abs	
+78B2E968	func	labs	
+78B2E977	func	lldiv	
+78B2E9A3	func	perror	
+78B2EACC	func	qsort_s	
+78B2ED80	func	srand	
+78B2ED92	func	rand	
+78B2EDB3	func	strerror	
+78B2EE60	func	strerror_s	
+78B2FD49	func	__STRINGTOLD_L	
+78B30915	func	$I10_OUTPUT	
+78B3122F	func	fabs	
+78B312EA	func	_set_controlfp	
+78B3148B	func	_statusfp	
+78B3151D	func	_fpreset	
+78B31590	func	_statusfp2	
+78B315EA	func	_clearfp	
+78B316C3	func	__control87_2	
+78B319DA	func	_controlfp	
+78B31CEF	func	__libm_sse2_acos	
+78B33968	func	__libm_sse2_acosf	
+78B34980	func	__libm_sse2_asin	
+78B36580	func	__libm_sse2_asinf	
+78B37598	func	__libm_sse2_atan	
+78B38220	func	__libm_sse2_atan2	
+78B392F8	func	__libm_sse2_atanf	
+78B39A58	func	__libm_sse2_cos	
+78B3A490	func	__libm_sse2_cosf	
+78B3AA44	func	__libm_sse2_exp	
+78B3B118	func	__libm_sse2_expf	
+78B3B50C	func	__libm_sse2_log	
+78B3C030	func	__libm_sse2_log10	
+78B3CB80	func	__libm_sse2_log10f	
+78B3D16C	func	__libm_sse2_logf	
+78B3D754	func	__libm_sse2_pow	
+78B41AE0	func	__libm_sse2_powf	
+78B42758	func	__libm_sse2_sin	
+78B431A0	func	__libm_sse2_sinf	
+78B4374C	func	__libm_sse2_tan	
+78B45040	func	__libm_sse2_tanf	
+78B45DAB	func	_hypot	
+78B45DCC	func	_cabs	
+78B45DED	func	_copysign	
+78B45E15	func	_chgsign	
+78B45E42	func	_scalb	
+78B45E5C	func	_logb	
+78B45F45	func	_nextafter	
+78B461F7	func	_finite	
+78B46213	func	_isnan	
+78B4624B	func	_fpclass	
+78B467FF	func	_fpieee_flt	
+78B46EC8	func	_hypotf	
+78B46FED	func	_j0	
+78B4715D	func	_j1	
+78B472E2	func	_jn	
+78B47457	func	_y0	
+78B47608	func	_y1	
+78B477C9	func	_yn	
+78B47891	func	_set_SSE2_enable	
+78B478AA	func	frexp	
+78B47978	func	ldexp	
+78B53008	data	_iob	
+78B542A0	data	_timezone	
+78B542A4	data	_daylight	
+78B542A8	data	_dstbias	
+78B542B0	data	_tzname	
+78B54338	data	_mbctype	
+78B54440	data	_mbcasemap	
+78B545D0	data	__badioinfo	
+78B54614	data	_pctype	
+78B54618	data	_pwctype	
+78B5461C	data	__mb_cur_max	
+78B54620	data	_sys_errlist	
+78B546D0	data	_sys_nerr	
+78B546E0	data	_HUGE	
+78B54704	data	__argc	
+78B54708	data	__argv	
+78B5470C	data	__wargv	
+78B54710	data	_environ	
+78B54714	data	__initenv	
+78B54718	data	_wenviron	
+78B5471C	data	__winitenv	
+78B54720	data	_pgmptr	
+78B54724	data	_wpgmptr	
+78B54728	data	_wcmdln	
+78B5472C	data	_acmdln	
+78B54730	data	_commode	
+78B54734	data	_fmode	
+78B54740	data	__pioinfo	
+78B54840	data	__setlc_active	
+78B54844	data	__unguarded_readlc_active	
+78B5484C	data	__lconv	

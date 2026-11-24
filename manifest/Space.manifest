@@ -1,0 +1,14 @@
+# recomp_lift manifest for Angry Birds Space (PC).
+
+# libmpg123 (statically linked): native replacement, addresses from
+# the shared signature (feed = init + 0x440).
+
+replace 0050D410 mpg123_init
+replace 0050DCC0 mpg123_new
+replace 0050DC60 mpg123_delete
+replace 0050DCE0 mpg123_open_feed
+replace 0050D850 mpg123_feed
+replace 0050D8A0 mpg123_decode
+replace 0050D9C0 mpg123_getformat
+replace 0050DA20 mpg123_tell
+replace 0050DAD0 mpg123_feedseek

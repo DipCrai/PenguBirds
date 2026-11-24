@@ -1,0 +1,13 @@
+# recomp_lift manifest for Angry Birds Classic (PC 4.0.0).
+
+# libmpg123 (statically linked): native replacement, addresses found by the
+# shared signature (feed = init + 0x440).
+replace 004E3F40 mpg123_init
+replace 004E47F0 mpg123_new
+replace 004E4790 mpg123_delete
+replace 004E4810 mpg123_open_feed
+replace 004E4380 mpg123_feed
+replace 004E43D0 mpg123_decode
+replace 004E44F0 mpg123_getformat
+replace 004E4550 mpg123_tell
+replace 004E4600 mpg123_feedseek

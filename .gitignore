@@ -1,0 +1,29 @@
+# Build trees
+out/
+build/
+
+# Lifter output (regenerated from the game binaries)
+generated/
+
+# Dumps/captures (symbol packs are part of the repository)
+dumps/
+captures/
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Never commit game files or anything extracted from them
+*.exe
+*.dll
+*.gdf
+*.luac
+
+# Per-game generated lift output
+generated_*/
+
+# Local standalone build
+tools/pengubirds/pengubirds

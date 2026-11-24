@@ -1,0 +1,2884 @@
+diff --git a/platforms/win32/CMakeLists.txt b/platforms/win32/CMakeLists.txt
+index c8e55e3..64b7f8a 100644
+--- a/platforms/win32/CMakeLists.txt
++++ b/platforms/win32/CMakeLists.txt
+@@ -37,10 +37,13 @@ add_library(recomp_win32 SHARED
+   src/win32/gdi32.cpp
+   src/win32/shell_net.cpp
+   src/win32/ws2_32.cpp
++  src/win32/secur32.cpp
+   src/win32/com.cpp)
+ target_include_directories(recomp_win32 PUBLIC src)
++# secur32 (Schannel) drives the host TLS stack.
++find_package(OpenSSL REQUIRED COMPONENTS SSL)
+ target_link_libraries(recomp_win32 PUBLIC recomp_x86 recomp_pe SDL3::SDL3
+-                      PRIVATE recomp_gfx)  # user32: gfx::FitRect, gfx/present.h
++                      PRIVATE recomp_gfx OpenSSL::SSL)
+ # Nothing in a game refers to an HLE module's symbols: keep the linker
+ # from dropping them where it links --as-needed (ld64 keeps every dylib).
+ if(NOT APPLE)
+diff --git a/platforms/win32/src/win32/dsound.cpp b/platforms/win32/src/win32/dsound.cpp
+index 7c8dc7c..7fc7120 100644
+--- a/platforms/win32/src/win32/dsound.cpp
++++ b/platforms/win32/src/win32/dsound.cpp
+@@ -14,14 +14,18 @@
+ // feed the mixer's DS3D model (pan by azimuth, distance attenuation with
+ // the listener's rolloff factor); DS3D_DEFERRED settings wait for
+ // CommitDeferredSettings. Cones and Doppler are stored, not applied.
+-// Position notifications (IDirectSoundNotify) and effects are not
++// Position notifications (IDirectSoundNotify) are polled by a host thread a
++// few times per millisecond (the mixer has no cursor callbacks) and signal
++// the guest's events when the play cursor passes an offset. Effects are not
+ // implemented: fatal and named.
+ 
++#include <chrono>
+ #include <cmath>
+ #include <cstring>
+ #include <memory>
+ #include <mutex>
+ #include <set>
++#include <thread>
+ #include <vector>
+ 
+ #include "runtime/audio/mixer.h"
+@@ -171,7 +175,7 @@ struct SoundBuffer : com::Object {
+   int32_t volume = 0, pan = 0;
+   uint32_t frequency = 0;  // 0: the format's rate
+   Params3D p3d, pending3d;
+-  uint32_t buffer3d = 0, listener = 0;  // guest pointers of interfaces handed out
++  uint32_t buffer3d = 0, listener = 0, notify = 0;  // guest interface pointers
+   ~SoundBuffer() override;
+ };
+ 
+@@ -190,6 +194,18 @@ struct DirectSound : com::Object {
+   uint32_t primary = 0;  // the primary buffer, created once
+ };
+ 
++// IDirectSoundNotify: the play cursor crossing offsets (in bytes) sets the
++// guest's events. The mixer has no cursor callback, so a host thread polls
++// the position; last_ is the cursor at the previous poll.
++struct Notify : com::Object {
++  uint32_t buffer = 0;  // referenced IDirectSoundBuffer8
++  std::mutex mu;
++  std::vector<std::pair<uint32_t, uint32_t>> pos;  // byte offset, event
++  uint32_t last = 0;
++  bool primed = false, was_playing = false;
++  ~Notify() override;
++};
++
+ // Deferred 3D settings, applied by CommitDeferredSettings.
+ std::mutex g_mu;
+ ListenerParams g_listener, g_listener_pending;
+@@ -217,6 +233,12 @@ Listener::~Listener() {
+   com::Release(primary);
+ }
+ 
++Notify::~Notify() {
++  if (auto* b = com::As<SoundBuffer>(buffer))
++    if (b->notify == guest) b->notify = 0;
++  com::Release(buffer);
++}
++
+ uint32_t DirectSoundVtable() {
+   return com::Vtable("dsound.dll", "IDirectSound8",
+                      {"QueryInterface", "AddRef", "Release", "CreateSoundBuffer", "GetCaps",
+@@ -253,6 +275,11 @@ uint32_t ListenerVtable() {
+                       "SetRolloffFactor", "SetVelocity", "CommitDeferredSettings"});
+ }
+ 
++uint32_t NotifyVtable() {
++  return com::Vtable("dsound.dll", "IDirectSoundNotify",
++                     {"QueryInterface", "AddRef", "Release", "SetNotificationPositions"});
++}
++
+ template <typename T>
+ T* Self(Ctx& c, const char* iface) {
+   T* o = com::As<T>(Arg(c, 0));
+@@ -461,6 +488,8 @@ HLE_NAMED("dsound.dll", "IDirectSound8::DuplicateSoundBuffer", DS8_DuplicateSoun
+ 
+ // ---- IDirectSoundBuffer8
+ 
++void RegisterNotify(const std::shared_ptr<Notify>& n);
++
+ SoundBuffer* Buf(Ctx& c) { return Self<SoundBuffer>(c, "IDirectSoundBuffer8"); }
+ 
+ HLE_NAMED("dsound.dll", "IDirectSoundBuffer8::QueryInterface", DSB8_QueryInterface, 3) {
+@@ -498,8 +527,20 @@ HLE_NAMED("dsound.dll", "IDirectSoundBuffer8::QueryInterface", DSB8_QueryInterfa
+     Wr32(out, b->buffer3d);
+     return com::kS_OK;
+   }
+-  if (com::GuidEq(riid, kIID_IDirectSoundNotify))
+-    FatalF("dsound: IDirectSoundNotify (position notifications) is not supported yet");
++  if (com::GuidEq(riid, kIID_IDirectSoundNotify) && !b->primary &&
++      (b->flags & DSBCAPS_CTRLPOSITIONNOTIFY)) {
++    if (b->notify) {
++      com::AddRef(b->notify);
++    } else {
++      auto n = std::make_shared<Notify>();
++      n->buffer = Arg(c, 0);
++      com::AddRef(Arg(c, 0));
++      b->notify = com::Publish(n, NotifyVtable());
++      RegisterNotify(n);
++    }
++    Wr32(out, b->notify);
++    return com::kS_OK;
++  }
+   return com::kE_NOINTERFACE;
+ }
+ HLE_NAMED("dsound.dll", "IDirectSoundBuffer8::AddRef", DSB8_AddRef, 1) { return com::AddRef(Arg(c, 0)); }
+@@ -525,6 +566,127 @@ int64_t PlayFrame(const SoundBuffer& b) {
+   return ((b.voice->Position() % n) + n) % n;
+ }
+ 
++// ---- IDirectSoundNotify
++
++std::mutex g_nt_mu;
++std::vector<std::weak_ptr<Notify>> g_nt;
++bool g_nt_started = false;
++
++// Every live notification's play cursor, compared with the previous poll:
++// an offset is reached when the cursor moved past it (or past the end and
++// back to the front, for a looping buffer).
++void NotifyLoop() {
++  std::unique_lock<std::mutex> l(g_nt_mu);
++  for (;;) {
++    g_nt_mu.unlock();
++    std::this_thread::sleep_for(std::chrono::milliseconds(4));
++    g_nt_mu.lock();
++    std::vector<std::shared_ptr<Notify>> live;
++    for (auto it = g_nt.begin(); it != g_nt.end();) {
++      auto n = it->lock();
++      if (!n) {
++        it = g_nt.erase(it);
++        continue;
++      }
++      live.push_back(std::move(n));
++      ++it;
++    }
++    l.unlock();
++    for (auto& n : live) {
++      auto* b = com::As<SoundBuffer>(n->buffer);
++      if (!b || b->primary || !b->data) continue;
++      const uint32_t size = uint32_t(b->data->bytes.size());
++      uint32_t cur;
++      bool playing;
++      {
++        std::lock_guard<std::mutex> ml(M().mu());
++        cur = uint32_t(PlayFrame(*b)) * b->data->fmt.block;
++        playing = b->playing && b->voice->state == audio::Voice::State::Playing;
++      }
++      std::lock_guard<std::mutex> nl(n->mu);
++      if (!playing) {  // stopped or paused: do not cross anything
++        n->last = cur;
++        n->primed = true;
++        n->was_playing = false;
++        continue;
++      }
++      if (!n->primed) {
++        n->last = cur;
++        n->primed = true;
++        n->was_playing = true;
++        continue;
++      }
++      // Starting to play from the top reaches offset 0.
++      const bool start = !n->was_playing && cur >= n->last;
++      const bool wrapped = cur < n->last;
++      for (const auto& p : n->pos) {
++        if (p.first >= size) continue;
++        const bool hit = start && p.first == 0
++                             ? true
++                             : wrapped ? (p.first > n->last || p.first <= cur)
++                                       : (p.first > n->last && p.first <= cur);
++        if (hit) SignalEventHandle(p.second, false);
++      }
++      n->last = cur;
++      n->was_playing = true;
++    }
++    l.lock();
++  }
++}
++
++void RegisterNotify(const std::shared_ptr<Notify>& n) {
++  std::lock_guard<std::mutex> l(g_nt_mu);
++  g_nt.push_back(n);
++  if (!g_nt_started) {
++    g_nt_started = true;
++    std::thread(NotifyLoop).detach();
++  }
++}
++
++Notify* NotifyObj(Ctx& c) {
++  Notify* n = com::As<Notify>(Arg(c, 0));
++  if (!n) FatalF("IDirectSoundNotify call on unknown object %08X", uint32_t(Arg(c, 0)));
++  return n;
++}
++
++HLE_NAMED("dsound.dll", "IDirectSoundNotify::QueryInterface", DSN_QueryInterface, 3) {
++  NotifyObj(c);
++  uint32_t riid = Arg(c, 1), out = Arg(c, 2);
++  if (!out) return DSERR_INVALIDPARAM;
++  Wr32(out, 0);
++  if (!com::GuidEq(riid, kIID_IDirectSoundNotify)) return com::kE_NOINTERFACE;
++  com::AddRef(Arg(c, 0));
++  Wr32(out, Arg(c, 0));
++  return com::kS_OK;
++}
++HLE_NAMED("dsound.dll", "IDirectSoundNotify::AddRef", DSN_AddRef, 1) {
++  return com::AddRef(Arg(c, 0));
++}
++HLE_NAMED("dsound.dll", "IDirectSoundNotify::Release", DSN_Release, 1) {
++  return com::Release(Arg(c, 0));
++}
++
++// (dwPositionCount, pDSBPositionNotify[]): each {dwOffset, hEventNotify},
++// offsets in bytes into the buffer. Replaces the previous set.
++HLE_NAMED("dsound.dll", "IDirectSoundNotify::SetNotificationPositions",
++          DSN_SetNotificationPositions, 3) {
++  Notify* n = NotifyObj(c);
++  uint32_t count = Arg(c, 1), list = Arg(c, 2);
++  if ((count && !list) || count > 1000) return DSERR_INVALIDPARAM;
++  auto* b = com::As<SoundBuffer>(n->buffer);
++  const uint32_t size = b && b->data ? uint32_t(b->data->bytes.size()) : 0;
++  std::vector<std::pair<uint32_t, uint32_t>> pos;
++  pos.reserve(count);
++  for (uint32_t i = 0; i < count; i++) {
++    uint32_t off = Rd32(list + 8 * i), ev = Rd32(list + 8 * i + 4);
++    if (off >= size || !ev) return DSERR_INVALIDPARAM;
++    pos.emplace_back(off, ev);
++  }
++  std::lock_guard<std::mutex> l(n->mu);
++  n->pos = std::move(pos);
++  return DS_OK;
++}
++
+ // (pdwCurrentPlayCursor, pdwCurrentWriteCursor)
+ HLE_NAMED("dsound.dll", "IDirectSoundBuffer8::GetCurrentPosition", DSB8_GetCurrentPosition, 3) {
+   SoundBuffer* b = Buf(c);
+diff --git a/platforms/win32/src/win32/hle.cpp b/platforms/win32/src/win32/hle.cpp
+index b2449dd..6778516 100644
+--- a/platforms/win32/src/win32/hle.cpp
++++ b/platforms/win32/src/win32/hle.cpp
+@@ -30,7 +30,8 @@ const std::vector<std::string>& KnownDlls() {
+       "kernel32.dll", "user32.dll",  "gdi32.dll",    "advapi32.dll",
+       "ole32.dll",    "version.dll", "winmm.dll",    "wsock32.dll",
+       "ddraw.dll",    "mss32.dll",   "binkw32.dll",  "dbghelp.dll",
+-      "imm32.dll",    "shfolder.dll", "ntdll.dll",   "opengl32.dll"};
++      "imm32.dll",    "shfolder.dll", "ntdll.dll",   "opengl32.dll",
++      "secur32.dll"};
+   return dlls;
+ }
+ 
+diff --git a/platforms/win32/src/win32/hle.h b/platforms/win32/src/win32/hle.h
+index f2a4244..370132f 100644
+--- a/platforms/win32/src/win32/hle.h
++++ b/platforms/win32/src/win32/hle.h
+@@ -17,6 +17,17 @@ inline constexpr uint32_t kModuleRegion = 0x70000000;
+ inline constexpr uint32_t kModuleRegionSize = 0x00200000;
+ inline constexpr gaddr kModuleRegion64 = 0xFFE000000;  // x64 (win32/process.h)
+ 
++// The guest exception filter registered with SetUnhandledExceptionFilter, if
++// any: the last stop of an exhausted SEH chain.
++inline gaddr UnhandledExceptionFilterPtr() {
++  static gaddr f = 0;
++  return f;
++}
++inline gaddr& UnhandledExceptionFilterSlot() {
++  static gaddr f = 0;
++  return f;
++}
++
+ // The full export table of a DLL we provide, for games that GetProcAddress
+ // every entry point up front and only call some (an engine's GL loader
+ // that resolves all of opengl32). GetProcAddress then returns a thunk for
+diff --git a/platforms/win32/src/win32/kernel32.cpp b/platforms/win32/src/win32/kernel32.cpp
+index 125a80d..570bff2 100644
+--- a/platforms/win32/src/win32/kernel32.cpp
++++ b/platforms/win32/src/win32/kernel32.cpp
+@@ -231,6 +231,7 @@ HLE64("kernel32.dll", GetModuleFileNameA, 3) {
+ 
+ // LoadLibrary(Ex)A/W: lifted DLLs, and the HLE modules.
+ gaddr LoadModule(Ctx& c, const char* api, const std::string& n) {
++  RECOMP_TRACE("  LoadModule(%s)\n", n.c_str());
+   if (Module* m = LiftedDll(n)) {
+     std::lock_guard<std::recursive_mutex> l(g_loader_mu);
+     if (m->refs++) return m->img.image_base;
+@@ -412,10 +413,18 @@ HLE64("kernel32.dll", SetLastError, 1) {
+   return 0;
+ }
+ 
++gaddr UnhandledExceptionFilterPtr() {
++  static gaddr f = 0;
++  return f;
++}
++gaddr& UnhandledExceptionFilterSlot() {
++  static gaddr f = 0;
++  return f;
++}
++
+ HLE64("kernel32.dll", SetUnhandledExceptionFilter, 1) {
+-  static gaddr filter = 0;
+-  gaddr old = filter;
+-  filter = Arg(c, 0);
++  gaddr old = UnhandledExceptionFilterPtr();
++  UnhandledExceptionFilterSlot() = Arg(c, 0);
+   return old;
+ }
+ 
+@@ -914,6 +923,23 @@ bool TryEnterCs(gaddr cs) {
+ 
+ }  // namespace
+ 
++// The DLLs the EXE imports from are attached before its entry point, as
++// the Windows loader does: a shipped CRT needs its DllMain (_CRT_INIT)
++// first. Others stay unmapped-until-LoadLibrary.
++void AttachImportedDlls(Ctx& c) {
++  std::lock_guard<std::recursive_mutex> l(g_loader_mu);
++  for (Module& m : g_win32->modules) {
++    if (m.refs) continue;
++    bool imported = false;
++    for (const PeImport& imp : g_win32->img.imports)
++      if (NormaliseDll(imp.dll) == m.name) { imported = true; break; }
++    if (!imported) continue;
++    m.refs = 1;
++    if (!CallDllMain(c, m, kDllProcessAttach))
++      FatalF("%s: DllMain failed", m.name.c_str());
++  }
++}
++
+ void EnterCs(gaddr cs) {
+   uint32_t tid = CurrentThread()->tid;
+   uint32_t* lock_count = CsField(cs, Cs().lock_count);
+diff --git a/platforms/win32/src/win32/kernel32_file.cpp b/platforms/win32/src/win32/kernel32_file.cpp
+index e5c3fd3..b75da3b 100644
+--- a/platforms/win32/src/win32/kernel32_file.cpp
++++ b/platforms/win32/src/win32/kernel32_file.cpp
+@@ -736,16 +736,27 @@ void FillFindData(uint32_t fd, const std::string& host_dir, const std::string& n
+   Wr32(fd + 28, uint32_t(uint64_t(st.st_size) >> 32));
+   Wr32(fd + 32, uint32_t(st.st_size));
+   PutStr(fd + 44, name.substr(0, 259));  // cFileName
+-  // cAlternateFileName (8.3) left empty.
+ }
+ 
+-HLE("kernel32.dll", FindFirstFileA, 2) {
+-  std::string pattern = AbsGuest(GStr(Arg(c, 0)));
++void FillFindDataW(uint32_t fd, const std::string& host_dir, const std::string& name) {
++  struct stat st{};
++  stat((host_dir + "/" + name).c_str(), &st);
++  std::memset(GPtr(fd), 0, 592);
++  Wr32(fd + 0, AttributesOf(st, name));
++  PutFileTime(fd + 4, platform::StatModifyTime(st));
++  PutFileTime(fd + 12, platform::StatAccessTime(st));
++  PutFileTime(fd + 20, platform::StatModifyTime(st));
++  Wr32(fd + 28, uint32_t(uint64_t(st.st_size) >> 32));
++  Wr32(fd + 32, uint32_t(st.st_size));
++  PutWStr(fd + 44, name.substr(0, 259));
++}
++
++uint32_t FindFirstImpl(const std::string& pattern, uint32_t fd, bool wide) {
+   size_t s = pattern.find_last_of('\\');
+   std::string gdir = pattern.substr(0, s), mask = pattern.substr(s + 1);
+   if (gdir.size() == 2) gdir += '\\';
+   auto f = std::make_shared<FindObject>();
+-  std::set<std::string> seen;  // lower case: the overlay hides the install
++  std::set<std::string> seen;
+   for (const std::string& hdir : HostDirs(gdir)) {
+     DIR* d = opendir(hdir.c_str());
+     if (!d) continue;
+@@ -760,25 +771,47 @@ HLE("kernel32.dll", FindFirstFileA, 2) {
+     SetLastError(kErrorFileNotFound);
+     return kInvalidHandle;
+   }
+-  FillFindData(Arg(c, 1), f->entries[0].first, f->entries[0].second);
++  if (wide) FillFindDataW(fd, f->entries[0].first, f->entries[0].second);
++  else FillFindData(fd, f->entries[0].first, f->entries[0].second);
+   f->next = 1;
+   return NewHandle(f);
+ }
+ 
+-HLE("kernel32.dll", FindNextFileA, 2) {
+-  auto o = GetHandle(Arg(c, 0));
++bool FindNextImpl(uint32_t h, uint32_t fd, bool wide) {
++  auto o = GetHandle(h);
+   if (!o || o->type != KObject::Type::Find) {
+     SetLastError(kErrorInvalidHandle);
+-    return 0;
++    return false;
+   }
+   auto* f = static_cast<FindObject*>(o.get());
+   if (f->next >= f->entries.size()) {
+     SetLastError(kErrorNoMoreFiles);
+-    return 0;
++    return false;
+   }
+   const auto& [hdir, name] = f->entries[f->next++];
+-  FillFindData(Arg(c, 1), hdir, name);
+-  return 1;
++  if (wide) FillFindDataW(fd, hdir, name);
++  else FillFindData(fd, hdir, name);
++  return true;
++}
++
++HLE("kernel32.dll", FindFirstFileA, 2) {
++  return FindFirstImpl(AbsGuest(GStr(Arg(c, 0))), Arg(c, 1), false);
++}
++
++HLE("kernel32.dll", FindFirstFileW, 2) {
++  return FindFirstImpl(AbsGuest(Narrow(GWStr(Arg(c, 0)))), Arg(c, 1), true);
++}
++
++HLE("kernel32.dll", FindFirstFileExW, 6) {
++  return FindFirstImpl(AbsGuest(Narrow(GWStr(Arg(c, 0)))), Arg(c, 2), true);
++}
++
++HLE("kernel32.dll", FindNextFileA, 2) {
++  return FindNextImpl(Arg(c, 0), Arg(c, 1), false) ? 1 : 0;
++}
++
++HLE("kernel32.dll", FindNextFileW, 2) {
++  return FindNextImpl(Arg(c, 0), Arg(c, 1), true) ? 1 : 0;
+ }
+ 
+ HLE("kernel32.dll", FindClose, 1) {
+diff --git a/platforms/win32/src/win32/kernel32_seh.cpp b/platforms/win32/src/win32/kernel32_seh.cpp
+index d759b5f..c1443c9 100644
+--- a/platforms/win32/src/win32/kernel32_seh.cpp
++++ b/platforms/win32/src/win32/kernel32_seh.cpp
+@@ -9,6 +9,8 @@
+ // `resume` site, which throws GuestResume to the owning lifted function.
+ 
+ #include <algorithm>
++#include <cstdio>
++#include <cstdlib>
+ #include <cstring>
+ 
+ #include "runtime/log.h"
+@@ -20,6 +22,11 @@
+ namespace recomp::hle {
+ namespace {
+ 
++bool SehDebug() {
++  static const bool on = std::getenv("ABSW2_SEH") != nullptr;
++  return on;
++}
++
+ constexpr uint32_t kExceptionNoncontinuable = 0x1;
+ constexpr uint32_t kExceptionUnwinding = 0x2;
+ constexpr uint32_t kExceptionExitUnwind = 0x4;
+@@ -77,11 +84,21 @@ bool DispatchException(Ctx& c, uint32_t code, uint32_t flags, uint32_t nparams,
+   RECOMP_TRACE("  exception %08X at %08X (params %u: %08X %08X), walking SEH chain\n",
+             code, eip, nparams, nparams > 0 ? params[0] : 0,
+             nparams > 1 ? params[1] : 0);
++  if (SehDebug()) std::fprintf(stderr, "EXC %08X at %08X params %u: %08X %08X esp=%08X ebp=%08X fs0=%08X rec=%08X ctx=%08X\n",
++               code, eip, nparams, nparams > 0 ? params[0] : 0,
++               nparams > 1 ? params[1] : 0, c.esp, c.ebp, Rd32(teb), rec, ctx);
+   for (uint32_t reg = Rd32(teb); reg != kEnd && reg; reg = Rd32(reg)) {
+     if (reg < CurrentThread()->stack_lo || reg >= CurrentThread()->stack_hi)
+       FatalF("corrupt SEH chain: record %08X outside the stack", reg);
+     uint32_t handler = Rd32(reg + 4);
++    if (SehDebug()) std::fprintf(stderr, "  frame %08X handler %08X: [8]=%08X [C]=%08X [10]=%08X [14]=%08X [18]=%08X cookie=%08X\n",
++                 reg, handler, Rd32(reg + 8), Rd32(reg + 0xC), Rd32(reg + 0x10),
++                 Rd32(reg + 0x14), Rd32(reg + 0x18), Rd32(0x78B54610));
++    if (SehDebug()) std::fprintf(stderr, "  CALL handler %08X rec=%08X(flags=%08X) frame=%08X ctx=%08X esp=%08X\n",
++                 handler, rec, Rd32(rec + 4), reg, ctx, c.esp);
+     uint32_t disp = CallGuest(c, handler, {rec, reg, ctx, 0});
++    if (SehDebug()) std::fprintf(stderr, "  RET  handler %08X -> %u\n", handler, disp);
++    RECOMP_TRACE("  SEH handler %08X -> disposition %u\n", handler, disp);
+     if (disp == kContinueExecution) {
+       if (flags & kExceptionNoncontinuable)
+         FatalF("handler %08X continued a noncontinuable exception %08X",
+@@ -120,9 +137,13 @@ HLE64("kernel32.dll", RaiseException, 4) {
+   uint32_t eip = Rd32(c.esp);  // return address: where Windows reports it
+   uint32_t params[15] = {};
+   for (uint32_t i = 0; i < std::min<uint32_t>(n, 15); i++) params[i] = Rd32(args + 4 * i);
+-  if (!DispatchException(c, code, flags & kExceptionNoncontinuable, n, params, eip))
++  RECOMP_TRACE("RaiseException %08X flags %08X n %u at %08X\n", code, flags, n, eip);
++  if (!DispatchException(c, code, flags & kExceptionNoncontinuable, n, params, eip)) {
++    RECOMP_TRACE("RaiseException %08X: unhandled (no SEH handler took it)\n", code);
+     FatalF("unhandled guest exception %08X raised from %08X (params %u: %08X %08X)",
+            code, eip, n, params[0], params[1]);
++  }
++  RECOMP_TRACE("RaiseException %08X: handled, continuing at guest EIP %08X\n", code, eip);
+   return c.eax;
+ }
+ 
+@@ -138,6 +159,8 @@ HLE("kernel32.dll", RtlUnwind, 4) {
+            target_ip, Rd32(c.esp));
+   uint32_t teb = uint32_t(c.fs_base);
+   uint32_t saved_esp = c.esp;
++  if (SehDebug()) std::fprintf(stderr, "RTLUNWIND target=%08X tip=%08X rec=%08X retval=%08X ret=%08X fs0=%08X esp=%08X\n",
++                 target, target_ip, exc, retval, Rd32(saved_esp), Rd32(teb), saved_esp);
+   c.esp -= 0x800;
+   uint32_t rec = exc;
+   if (!rec) {
+@@ -152,6 +175,9 @@ HLE("kernel32.dll", RtlUnwind, 4) {
+   for (uint32_t reg = Rd32(teb); reg != kEnd && reg && reg != target;
+        reg = Rd32(teb)) {
+     uint32_t handler = Rd32(reg + 4);
++    if (SehDebug()) std::fprintf(stderr, "  unwind frame %08X handler %08X: [8]=%08X [C]=%08X [10]=%08X [14]=%08X [18]=%08X cookie=%08X target=%08X\n",
++                 reg, handler, Rd32(reg + 8), Rd32(reg + 0xC), Rd32(reg + 0x10),
++                 Rd32(reg + 0x14), Rd32(reg + 0x18), Rd32(0x78B54610), target);
+     CallGuest(c, handler, {rec, reg, ctx, 0});
+     Wr32(teb, Rd32(reg));  // pop the frame
+   }
+@@ -159,11 +185,19 @@ HLE("kernel32.dll", RtlUnwind, 4) {
+   return retval;
+ }
+ 
++// The unhandled-exception filter the game registered (SetUnhandledExceptionFilter):
++// the last stop of an exhausted SEH chain. Its disposition decides whether
++// the exception is handled or unhandled; handled means continue at the fault.
+ HLE("kernel32.dll", UnhandledExceptionFilter, 1) {
++  gaddr h = UnhandledExceptionFilterPtr();
+   uint32_t ptrs = Arg(c, 0);
+   uint32_t rec = Rd32(ptrs);
+-  FatalF("UnhandledExceptionFilter: exception %08X at %08X", Rd32(rec),
+-         Rd32(rec + 0x0C));
++  uint32_t reg = Rd32(ptrs + 4);
++  uint32_t ctx = Rd32(ptrs + 8);
++  RECOMP_TRACE("UnhandledExceptionFilter -> %08X exc %08X at %08X (code %08X flags %08X eip %08X)\n",
++               h, rec, rec + 4, Rd32(rec), Rd32(rec + 4), Rd32(rec + 0x0C));
++  if (!h) return 1;  // kContinueSearch: nothing to run, unhandled
++  return CallGuest(c, h, {rec, reg, ctx, 0});
+ }
+ 
+ // Host pages larger than the guest's 4 KiB (16 KiB on Apple Silicon) are
+diff --git a/platforms/win32/src/win32/kernel32_state.h b/platforms/win32/src/win32/kernel32_state.h
+index 4bdf79c..f7e81b6 100644
+--- a/platforms/win32/src/win32/kernel32_state.h
++++ b/platforms/win32/src/win32/kernel32_state.h
+@@ -111,4 +111,9 @@ void OnGuestThreadFinished(uint32_t tid, uint32_t exit_code);
+ // timers). False if `h` is not an event.
+ bool SignalEventHandle(uint32_t h, bool pulse);
+ 
++namespace hle {
++// DllMain(DLL_PROCESS_ATTACH) for every lifted DLL the EXE imports from.
++void AttachImportedDlls(Ctx& c);
++}  // namespace hle
++
+ }  // namespace recomp
+diff --git a/platforms/win32/src/win32/opengl32.cpp b/platforms/win32/src/win32/opengl32.cpp
+index b3d5d27..0ab4432 100644
+--- a/platforms/win32/src/win32/opengl32.cpp
++++ b/platforms/win32/src/win32/opengl32.cpp
+@@ -23,6 +23,7 @@
+ #include "runtime/gfx/device.h"
+ #include "runtime/gfx/present.h"
+ #include "runtime/gl/context.h"
++#include "runtime/env.h"
+ #include "runtime/log.h"
+ #include "win32/hle.h"
+ #include "win32/kernel32_state.h"
+@@ -246,8 +247,11 @@ HLE("opengl32.dll", wglMakeCurrent, 2) {
+     ctx->dev = gfx::CreateChosenDevice(w);
+     int pw, ph;
+     FramebufferSize(ctx->hwnd, &pw, &ph);
+-    ctx->dev->ResetSwapChain(pw, ph, false);
++    const char* vs = Env("VSYNC");
++    bool vsync = vs && *vs && *vs != '0';
++    ctx->dev->ResetSwapChain(pw, ph, vsync);
+     ctx->gl = std::make_unique<gl::Context>(ctx->dev.get(), pw, ph);
++    if (vsync) ctx->gl->SetVsync(true);
+   }
+   if (t_current) t_current->current = false;
+   ctx->current = true;
+@@ -302,14 +306,57 @@ HLE("opengl32.dll", wglSwapBuffers, 1) { return Swap(Arg(c, 0)); }
+ 
+ // Extension entry points exist only for what GL_EXTENSIONS advertises.
+ HLE("opengl32.dll", wglGetProcAddress, 1) {
+-  static const char* const kExt[] = {
+-      "glActiveTextureARB", "glClientActiveTextureARB", "glMultiTexCoord2fARB",
+-      "glMultiTexCoord2fvARB", "glLockArraysEXT", "glUnlockArraysEXT",
+-      "glCompressedTexImage2DARB", "wglSwapIntervalEXT", "wglGetSwapIntervalEXT",
+-      "wglGetExtensionsStringEXT"};
+   std::string name = GStr(Arg(c, 0));
+-  for (const char* e : kExt)
+-    if (name == e) return ThunkFor("opengl32.dll", name);
++  // GL 1.3 promoted the multitexture extension to core under new names;
++  // both share one handler here.
++  static const std::map<std::string, std::string> kCore = {
++      {"glActiveTexture", "glActiveTextureARB"},
++      {"glClientActiveTexture", "glClientActiveTextureARB"},
++      {"glCompressedTexImage1DARB", "glCompressedTexImage1D"},
++      {"glCompressedTexImage2D", "glCompressedTexImage2DARB"},
++      {"glCompressedTexImage3DARB", "glCompressedTexImage3D"},
++      {"glCompressedTexSubImage1DARB", "glCompressedTexSubImage1D"},
++      {"glCompressedTexSubImage2DARB", "glCompressedTexSubImage2D"},
++      {"glCompressedTexSubImage3DARB", "glCompressedTexSubImage3D"},
++      {"glGetCompressedTexImageARB", "glGetCompressedTexImage"},
++      {"glMultiTexCoord1d", "glMultiTexCoord1dARB"},
++      {"glMultiTexCoord1dv", "glMultiTexCoord1dvARB"},
++      {"glMultiTexCoord1f", "glMultiTexCoord1fARB"},
++      {"glMultiTexCoord1fv", "glMultiTexCoord1fvARB"},
++      {"glMultiTexCoord1i", "glMultiTexCoord1iARB"},
++      {"glMultiTexCoord1iv", "glMultiTexCoord1ivARB"},
++      {"glMultiTexCoord1s", "glMultiTexCoord1sARB"},
++      {"glMultiTexCoord1sv", "glMultiTexCoord1svARB"},
++      {"glMultiTexCoord2d", "glMultiTexCoord2dARB"},
++      {"glMultiTexCoord2dv", "glMultiTexCoord2dvARB"},
++      {"glMultiTexCoord2f", "glMultiTexCoord2fARB"},
++      {"glMultiTexCoord2fv", "glMultiTexCoord2fvARB"},
++      {"glMultiTexCoord2i", "glMultiTexCoord2iARB"},
++      {"glMultiTexCoord2iv", "glMultiTexCoord2ivARB"},
++      {"glMultiTexCoord2s", "glMultiTexCoord2sARB"},
++      {"glMultiTexCoord2sv", "glMultiTexCoord2svARB"},
++      {"glMultiTexCoord3d", "glMultiTexCoord3dARB"},
++      {"glMultiTexCoord3dv", "glMultiTexCoord3dvARB"},
++      {"glMultiTexCoord3f", "glMultiTexCoord3fARB"},
++      {"glMultiTexCoord3fv", "glMultiTexCoord3fvARB"},
++      {"glMultiTexCoord3i", "glMultiTexCoord3iARB"},
++      {"glMultiTexCoord3iv", "glMultiTexCoord3ivARB"},
++      {"glMultiTexCoord3s", "glMultiTexCoord3sARB"},
++      {"glMultiTexCoord3sv", "glMultiTexCoord3svARB"},
++      {"glMultiTexCoord4d", "glMultiTexCoord4dARB"},
++      {"glMultiTexCoord4dv", "glMultiTexCoord4dvARB"},
++      {"glMultiTexCoord4f", "glMultiTexCoord4fARB"},
++      {"glMultiTexCoord4fv", "glMultiTexCoord4fvARB"},
++      {"glMultiTexCoord4i", "glMultiTexCoord4iARB"},
++      {"glMultiTexCoord4iv", "glMultiTexCoord4ivARB"},
++      {"glMultiTexCoord4s", "glMultiTexCoord4sARB"},
++      {"glMultiTexCoord4sv", "glMultiTexCoord4svARB"},
++  };
++  // GLEW decides which GL versions and extensions exist by the pointers
++  // being non-NULL, as a real driver returns them for whatever it supports.
++  auto core = kCore.find(name);
++  const std::string& target = core == kCore.end() ? name : core->second;
++  if (HasHandler("opengl32.dll", target)) return ThunkFor("opengl32.dll", target);
+   RECOMP_TRACE("  wglGetProcAddress(%s): not provided\n", name.c_str());
+   return 0;
+ }
+@@ -733,14 +780,99 @@ HLE("opengl32.dll", glTexCoord2fv, 1) {
+   g->TexCoord(0, Fv(Arg(c, 0), 0), Fv(Arg(c, 0), 1));
+   return 0;
+ }
+-HLE("opengl32.dll", glMultiTexCoord2fARB, 3) {
++// glMultiTexCoord<size><type>: the emulator keeps (s, t) per unit; size 3
++// and 4 only feed the first two components.
++template <typename T>
++void MultiTexV(gl::Context* g, const Ctx& c, int n) {
++  const T* p = reinterpret_cast<const T*>(GPtr(Arg(c, 1)));
++  g->TexCoord(int(Arg(c, 0) - gl::TEXTURE0), float(p[0]),
++              float(n > 1 ? p[1] : 0));
++}
++#define MTC_V(ident, T, n) \
++  HLE("opengl32.dll", ident, 2) { GL_OR_RETURN(0); MultiTexV<T>(g, c, n); return 0; }
++#define MTC_S(ident, nargs, s, t) \
++  HLE("opengl32.dll", ident, nargs) { GL_OR_RETURN(0); \
++    g->TexCoord(int(Arg(c, 0) - gl::TEXTURE0), (s), (t)); return 0; }
++
++MTC_S(glMultiTexCoord1dARB, 3, float(D(c, 1)), 0.0f)
++MTC_V(glMultiTexCoord1dvARB, double, 1)
++MTC_S(glMultiTexCoord1fARB, 2, F(c, 1), 0.0f)
++MTC_V(glMultiTexCoord1fvARB, float, 1)
++MTC_S(glMultiTexCoord1iARB, 2, float(int32_t(Arg(c, 1))), 0.0f)
++MTC_V(glMultiTexCoord1ivARB, int32_t, 1)
++MTC_S(glMultiTexCoord1sARB, 2, float(int16_t(Arg(c, 1) & 0xFFFF)), 0.0f)
++MTC_V(glMultiTexCoord1svARB, int16_t, 1)
++MTC_S(glMultiTexCoord2dARB, 5, float(D(c, 1)), float(D(c, 3)))
++MTC_V(glMultiTexCoord2dvARB, double, 2)
++MTC_S(glMultiTexCoord2fARB, 3, F(c, 1), F(c, 2))
++MTC_V(glMultiTexCoord2fvARB, float, 2)
++MTC_S(glMultiTexCoord2iARB, 3, float(int32_t(Arg(c, 1))), float(int32_t(Arg(c, 2))))
++MTC_V(glMultiTexCoord2ivARB, int32_t, 2)
++MTC_S(glMultiTexCoord2sARB, 3, float(int16_t(Arg(c, 1) & 0xFFFF)),
++      float(int16_t(Arg(c, 2) & 0xFFFF)))
++MTC_V(glMultiTexCoord2svARB, int16_t, 2)
++MTC_S(glMultiTexCoord3dARB, 7, float(D(c, 1)), float(D(c, 3)))
++MTC_V(glMultiTexCoord3dvARB, double, 2)
++MTC_S(glMultiTexCoord3fARB, 4, F(c, 1), F(c, 2))
++MTC_V(glMultiTexCoord3fvARB, float, 2)
++MTC_S(glMultiTexCoord3iARB, 4, float(int32_t(Arg(c, 1))), float(int32_t(Arg(c, 2))))
++MTC_V(glMultiTexCoord3ivARB, int32_t, 2)
++MTC_S(glMultiTexCoord3sARB, 4, float(int16_t(Arg(c, 1) & 0xFFFF)),
++      float(int16_t(Arg(c, 2) & 0xFFFF)))
++MTC_V(glMultiTexCoord3svARB, int16_t, 2)
++MTC_S(glMultiTexCoord4dARB, 9, float(D(c, 1)), float(D(c, 3)))
++MTC_V(glMultiTexCoord4dvARB, double, 2)
++MTC_S(glMultiTexCoord4fARB, 5, F(c, 1), F(c, 2))
++MTC_V(glMultiTexCoord4fvARB, float, 2)
++MTC_S(glMultiTexCoord4iARB, 5, float(int32_t(Arg(c, 1))), float(int32_t(Arg(c, 2))))
++MTC_V(glMultiTexCoord4ivARB, int32_t, 2)
++MTC_S(glMultiTexCoord4sARB, 5, float(int16_t(Arg(c, 1) & 0xFFFF)),
++      float(int16_t(Arg(c, 2) & 0xFFFF)))
++MTC_V(glMultiTexCoord4svARB, int16_t, 2)
++
++// GL 1.3 names GLEW probes that the emulator does not render with.
++// No multisample buffers: coverage is accepted and ignored.
++HLE("opengl32.dll", glSampleCoverage, 2) { return 0; }
++HLE("opengl32.dll", glCompressedTexImage1D, 7) { return 0; }
++HLE("opengl32.dll", glCompressedTexImage3D, 9) { return 0; }
++HLE("opengl32.dll", glCompressedTexSubImage1D, 7) { return 0; }
++HLE("opengl32.dll", glCompressedTexSubImage2D, 9) { return 0; }
++HLE("opengl32.dll", glCompressedTexSubImage3D, 11) { return 0; }
++HLE("opengl32.dll", glGetCompressedTexImage, 3) { return 0; }
++HLE("opengl32.dll", glLoadTransposeMatrixf, 1) {
++  GL_OR_RETURN(0);
++  const float* p = reinterpret_cast<const float*>(GPtr(Arg(c, 0)));
++  float m[16];
++  for (int i = 0; i < 4; i++)
++    for (int j = 0; j < 4; j++) m[i * 4 + j] = p[j * 4 + i];
++  g->LoadMatrix(m);
++  return 0;
++}
++HLE("opengl32.dll", glLoadTransposeMatrixd, 1) {
+   GL_OR_RETURN(0);
+-  g->TexCoord(int(Arg(c, 0) - gl::TEXTURE0), F(c, 1), F(c, 2));
++  float m[16];
++  for (int i = 0; i < 4; i++)
++    for (int j = 0; j < 4; j++)
++      m[i * 4 + j] = float(std::bit_cast<double>(Rd64(Arg(c, 0) + 8 * uint32_t(j * 4 + i))));
++  g->LoadMatrix(m);
+   return 0;
+ }
+-HLE("opengl32.dll", glMultiTexCoord2fvARB, 2) {
++HLE("opengl32.dll", glMultTransposeMatrixf, 1) {
+   GL_OR_RETURN(0);
+-  g->TexCoord(int(Arg(c, 0) - gl::TEXTURE0), Fv(Arg(c, 1), 0), Fv(Arg(c, 1), 1));
++  const float* p = reinterpret_cast<const float*>(GPtr(Arg(c, 0)));
++  float m[16];
++  for (int i = 0; i < 4; i++)
++    for (int j = 0; j < 4; j++) m[i * 4 + j] = p[j * 4 + i];
++  g->MultMatrix(m);
++  return 0;
++}
++HLE("opengl32.dll", glMultTransposeMatrixd, 1) {
++  GL_OR_RETURN(0);
++  float m[16];
++  for (int i = 0; i < 4; i++)
++    for (int j = 0; j < 4; j++)
++      m[i * 4 + j] = float(std::bit_cast<double>(Rd64(Arg(c, 0) + 8 * uint32_t(j * 4 + i))));
++  g->MultMatrix(m);
+   return 0;
+ }
+ HLE("opengl32.dll", glNormal3f, 3) { GL_OR_RETURN(0); g->Normal(F(c, 0), F(c, 1), F(c, 2)); return 0; }
+@@ -751,6 +883,20 @@ HLE("opengl32.dll", glReadPixels, 7) {
+                 int32_t(Arg(c, 3)), Arg(c, 4), Arg(c, 5), GPtr(Arg(c, 6)));
+   return 0;
+ }
++HLE("opengl32.dll", glCopyTexImage2D, 9) {
++  GL_OR_RETURN(0);
++  g->CopyTexImage2D(Arg(c, 0), int32_t(Arg(c, 1)), Arg(c, 2), int32_t(Arg(c, 3)),
++                    int32_t(Arg(c, 4)), int32_t(Arg(c, 5)), int32_t(Arg(c, 6)),
++                    int32_t(Arg(c, 7)));
++  return 0;
++}
++HLE("opengl32.dll", glCopyTexSubImage2D, 8) {
++  GL_OR_RETURN(0);
++  g->CopyTexSubImage2D(Arg(c, 0), int32_t(Arg(c, 1)), int32_t(Arg(c, 2)),
++                       int32_t(Arg(c, 3)), int32_t(Arg(c, 4)), int32_t(Arg(c, 5)),
++                       int32_t(Arg(c, 6)), int32_t(Arg(c, 7)));
++  return 0;
++}
+ 
+ }  // namespace
+ }  // namespace recomp::hle
+diff --git a/platforms/win32/src/win32/process.cpp b/platforms/win32/src/win32/process.cpp
+index 78e8890..6581aac 100644
+--- a/platforms/win32/src/win32/process.cpp
++++ b/platforms/win32/src/win32/process.cpp
+@@ -12,6 +12,7 @@
+ #include "win32/hle.h"
+ #include "win32/kernel32_state.h"
+ #include "win32/user32_window.h"
++#include "x86/lifted.h"
+ 
+ namespace recomp {
+ 
+@@ -150,6 +151,39 @@ const PeImage* ImageAt(gaddr va) {
+   return nullptr;
+ }
+ 
++// Static imports satisfied by a lifted DLL's exports: an EXE that ships its
++// CRT as a DLL (msvcr100.dll and the like) imports from a module it also
++// loads, and the import table is bound before any of them is mapped. Every
++// such IAT slot gets the lifted export's address, so calls reach the
++// original code with the Windows stack layout.
++void BindLiftedExports() {
++  Win32Process& w = *g_win32;
++  const bool x64 = g_proc->x64;
++  auto bind_image = [&](PeImage& img) {
++    for (const PeImport& imp : img.imports) {
++      const std::string dll = hle::NormaliseDll(imp.dll);
++      for (const Module& m : w.modules) {
++        if (m.name != dll) continue;
++        for (const PeExport& e : m.img.exports) {
++          bool match;
++          if (!imp.name.empty() && imp.name[0] == '#') {
++            uint32_t ordinal = 0;
++            for (size_t i = 1; i < imp.name.size(); i++) ordinal = ordinal * 10 + (imp.name[i] - '0');
++            match = e.name.empty() && e.ordinal == ordinal;
++          } else {
++            match = e.name == imp.name;
++          }
++          if (!match) continue;
++          if (x64) Wr64(imp.iat_va, e.va);
++          else Wr32(imp.iat_va, uint32_t(e.va));
++        }
++      }
++    }
++  };
++  bind_image(w.img);
++  for (Module& m : w.modules) bind_image(m.img);
++}
++
+ void MapModule(Module& m) {
+   Process& p = *g_proc;
+   if (m.img.image_size) p.mem.Decommit(m.img.image_base, m.img.image_size);
+@@ -197,6 +231,7 @@ int RunProcess(const win32::GameConfig& game, const std::string& exe_path,
+     m.base = d.base;
+     MapModule(m);
+   }
++  BindLiftedExports();
+ 
+   if (p.x64) {
+     // Everything above 4 GiB, below the TEBs.
+@@ -250,7 +285,10 @@ int RunProcess(const win32::GameConfig& game, const std::string& exe_path,
+ 
+   Thread* main = CreateGuestThread(w.img.stack_reserve);
+   RegisterMainThread(main);
+-  return int(RunMainThread(main, [&](Ctx& c) { return CallGuest(c, w.img.entry, {}); }));
++  return int(RunMainThread(main, [&](Ctx& c) {
++    hle::AttachImportedDlls(c);
++    return CallGuest(c, w.img.entry, {});
++  }));
+ }
+ 
+ }  // namespace recomp
+diff --git a/platforms/win32/src/win32/secur32.cpp b/platforms/win32/src/win32/secur32.cpp
+new file mode 100644
+index 0000000..7984ca9
+--- /dev/null
++++ b/platforms/win32/src/win32/secur32.cpp
+@@ -0,0 +1,706 @@
++// Schannel (secur32.dll) on the host's TLS stack: the client side of
++// SSPI, which the games' bundled libcurl 7.29 uses for HTTPS.
++//
++// InitSecurityInterfaceA hands out a guest SecurityFunctionTableA whose
++// entries are HLE thunks. A credential carries the TLS policy of the
++// SCHANNEL_CRED it was acquired with (protocols, certificate validation);
++// a security context is one host TLS session over memory BIOs.
++// InitializeSecurityContext feeds the peer's records and returns the token
++// to send; EncryptMessage and DecryptMessage map to the record layer, with
++// SecPkgContext_StreamSizes reporting the record overhead the caller must
++// leave room for.
++//
++// Ciphertext is only fed to the engine in whole TLS records, and the bytes
++// the engine has not consumed are reported as SECBUFFER_EXTRA: the caller
++// (Schannel's contract) keeps them and presents them again with the next
++// read, which is how partial records survive. Certificates are validated
++// against the host trust store, as Schannel validates against the Windows
++// one; a hostname mismatch is SEC_E_WRONG_PRINCIPAL.
++//
++// Server-side contexts (AcceptSecurityContext), message signing and
++// impersonation are not provided: they return SEC_E_UNSUPPORTED_FUNCTION,
++// which is what Windows returns for a package that does not implement an
++// optional service.
++
++#include <openssl/bio.h>
++#include <openssl/err.h>
++#include <openssl/ssl.h>
++#include <openssl/x509v3.h>
++
++#include <arpa/inet.h>
++
++#include <cstring>
++#include <map>
++#include <memory>
++#include <mutex>
++#include <string>
++#include <vector>
++
++#include "runtime/log.h"
++#include "win32/hle.h"
++#include "win32/kernel32_state.h"
++
++namespace recomp::hle {
++
++namespace {
++
++// SECURITY_STATUS and SSPI error codes (sspi.h).
++constexpr uint32_t kSecEOk = 0x00000000;
++constexpr uint32_t kSecIContinueNeeded = 0x00090312;
++constexpr uint32_t kSecIContextExpired = 0x00090317;
++constexpr uint32_t kSecEIncompleteMessage = 0x80090318;
++constexpr uint32_t kSecEInvalidHandle = 0x80090301;
++constexpr uint32_t kSecEUnsupportedFunction = 0x80090302;
++constexpr uint32_t kSecEInternalError = 0x80090304;
++constexpr uint32_t kSecEInvalidParameter = 0x80090305;
++constexpr uint32_t kSecEInvalidToken = 0x80090308;
++constexpr uint32_t kSecECertUnknown = 0x80090327;
++constexpr uint32_t kSecECertExpired = 0x80090328;
++constexpr uint32_t kSecEWrongPrincipal = 0x80090322;
++constexpr uint32_t kSecEUntrustedRoot = 0x80090325;
++constexpr uint32_t kSecEBufferTooSmall = 0x80090321;
++
++// SecBuffer types.
++constexpr uint32_t kSecBufferEmpty = 0;
++constexpr uint32_t kSecBufferData = 1;
++constexpr uint32_t kSecBufferToken = 2;
++constexpr uint32_t kSecBufferExtra = 5;
++constexpr uint32_t kSecBufferStreamTrailer = 6;
++constexpr uint32_t kSecBufferStreamHeader = 7;
++
++// QueryContextAttributes attributes.
++constexpr uint32_t kSecPkgAttrSizes = 0;
++constexpr uint32_t kSecPkgAttrStreamSizes = 4;
++
++// SCHANNEL_CRED flags and protocol bits (schannel.h).
++constexpr uint32_t kSchCredNoSenameCheck = 0x4;
++constexpr uint32_t kSchCredManualValidation = 0x8;
++constexpr uint32_t kSchCredAutoValidation = 0x20;
++constexpr uint32_t kSpProtSsl3Client = 0x8;
++constexpr uint32_t kSpProtTls1Client = 0x80;
++constexpr uint32_t kSpProtTls11Client = 0x100;
++constexpr uint32_t kSpProtTls12Client = 0x200;
++
++constexpr uint32_t kCredOutbound = 2;
++constexpr uint32_t kSchannelShutdown = 1;
++
++constexpr const char* kUnispName = "Microsoft Unified Security Protocol Provider";
++
++// A SecBufferDesc in guest memory: { ULONG ulVersion; ULONG cBuffers;
++// PSecBuffer pBuffers; }, each SecBuffer { ULONG cbBuffer; ULONG
++// BufferType; PVOID pvBuffer; }.
++struct SecBuf {
++  uint32_t cb, type, ptr;
++};
++
++uint32_t BufCount(gaddr desc) { return desc ? Rd32(desc + 4) : 0; }
++
++SecBuf GetBuf(gaddr desc, uint32_t i) {
++  gaddr b = Rd32(desc + 8) + i * 12;
++  return {Rd32(b), Rd32(b + 4), Rd32(b + 8)};
++}
++
++void SetBuf(gaddr desc, uint32_t i, uint32_t cb, uint32_t type, gaddr ptr) {
++  gaddr b = Rd32(desc + 8) + i * 12;
++  Wr32(b, cb);
++  Wr32(b + 4, type);
++  Wr32(b + 8, ptr);
++}
++
++// The credential acquired by AcquireCredentialsHandle: the TLS policy.
++struct Credential {
++  SSL_CTX* ssl_ctx = nullptr;
++  bool verify = true;
++  bool no_name_check = false;
++};
++
++// A security context: one TLS session, plus the tail of the record stream
++// the caller has given us but the engine has not consumed as a whole record
++// (memory BIOs only ever see complete records).
++struct TlsContext {
++  std::shared_ptr<Credential> cred;
++  SSL* ssl = nullptr;
++  BIO* rbio = nullptr;
++  BIO* wbio = nullptr;
++  uint32_t req_flags = 0;
++  bool shutdown = false;
++  std::vector<uint8_t> pending;
++};
++
++std::mutex g_mu;
++uint32_t g_next_id = 0x1000;
++std::map<uint32_t, std::shared_ptr<Credential>> g_creds;
++std::map<uint32_t, std::shared_ptr<TlsContext>> g_contexts;
++
++uint32_t NewId() { return g_next_id++; }
++
++uint32_t HandleId(gaddr h) { return h ? Rd32(h) : 0; }
++
++void PutHandle(gaddr h, uint32_t id) {
++  Wr32(h, id);
++  Wr32(h + 4, 0);
++}
++
++std::shared_ptr<Credential> FindCred(uint32_t id) {
++  std::lock_guard<std::mutex> l(g_mu);
++  auto it = g_creds.find(id);
++  return it == g_creds.end() ? nullptr : it->second;
++}
++
++std::shared_ptr<TlsContext> FindContext(uint32_t id) {
++  std::lock_guard<std::mutex> l(g_mu);
++  auto it = g_contexts.find(id);
++  return it == g_contexts.end() ? nullptr : it->second;
++}
++
++void LogOpenSsl(const char* what) {
++  unsigned long e = ERR_get_error();
++  if (!e) return;
++  char buf[256];
++  ERR_error_string_n(e, buf, sizeof buf);
++  WarnF("secur32: %s: %s\n", what, buf);
++}
++
++std::vector<uint8_t> Drain(BIO* b) {
++  std::vector<uint8_t> v;
++  size_t n = BIO_ctrl_pending(b);
++  if (!n) return v;
++  v.resize(n);
++  int got = BIO_read(b, v.data(), int(n));
++  if (got <= 0) return {};
++  v.resize(size_t(got));
++  return v;
++}
++
++// One record: 5-byte header, up to 16 KiB of payload plus the AEAD/CBC
++// overhead the maximum fragment allows.
++constexpr uint32_t kMaxRecord = 5 + 16384 + 2048;
++
++// Appends the caller's new bytes to whatever tail we kept, then feeds every
++// complete TLS record to the engine. The caller re-presents the bytes we
++// reported as SECBUFFER_EXTRA; those are already in `pending` or still in the
++// BIO, so only the bytes after them are new.
++void FeedRecords(TlsContext& cx, gaddr buf, uint32_t n) {
++  if (!n) return;
++  const uint8_t* in = GPtr(buf);
++  size_t skip = 0;
++  if (!cx.pending.empty()) {
++    if (n >= cx.pending.size() && std::memcmp(in, cx.pending.data(), cx.pending.size()) == 0)
++      skip = cx.pending.size();  // the caller presented our tail again
++    else {
++      WarnF("secur32: caller did not re-present the buffered record tail\n");
++      cx.pending.clear();
++    }
++  }
++  cx.pending.insert(cx.pending.end(), in + skip, in + n);
++  size_t fed = 0;
++  while (cx.pending.size() - fed >= 5) {
++    uint32_t len = (uint32_t(cx.pending[fed + 3]) << 8) | cx.pending[fed + 4];
++    if (len > kMaxRecord) {
++      WarnF("secur32: bad TLS record length %u\n", len);
++      cx.pending.clear();
++      return;
++    }
++    if (cx.pending.size() - fed < 5 + len) break;
++    BIO_write(cx.rbio, cx.pending.data() + fed, int(5 + len));
++    fed += 5 + len;
++  }
++  if (fed) cx.pending.erase(cx.pending.begin(), cx.pending.begin() + ptrdiff_t(fed));
++}
++
++// Pulls whole records the engine did not read back out of the BIO, in front
++// of the incomplete tail. `pending` is then every ciphertext byte the caller
++// has given us that the engine has not consumed, so the caller's replay of
++// our SECBUFFER_EXTRA is exactly a prefix of it.
++void Reclaim(TlsContext& cx) {
++  std::vector<uint8_t> held = Drain(cx.rbio);
++  if (held.empty()) return;
++  held.insert(held.end(), cx.pending.begin(), cx.pending.end());
++  cx.pending = std::move(held);
++}
++
++// Bytes the caller must keep for the next call: the unconsumed ciphertext.
++uint32_t ExtraBytes(TlsContext& cx) { return uint32_t(cx.pending.size()); }
++
++
++uint32_t VerifyStatus(SSL* ssl) {
++  switch (SSL_get_verify_result(ssl)) {
++    case X509_V_OK:
++      return kSecEOk;
++    case X509_V_ERR_HOSTNAME_MISMATCH:
++    case X509_V_ERR_IP_ADDRESS_MISMATCH:
++      return kSecEWrongPrincipal;
++    case X509_V_ERR_CERT_HAS_EXPIRED:
++    case X509_V_ERR_CERT_NOT_YET_VALID:
++      return kSecECertExpired;
++    case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
++    case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
++    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
++    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
++    case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
++      return kSecEUntrustedRoot;
++    default:
++      return kSecECertUnknown;
++  }
++}
++
++bool IsIpLiteral(const std::string& s) {
++  unsigned char a[16];
++  return inet_pton(AF_INET, s.c_str(), a) == 1 || inet_pton(AF_INET6, s.c_str(), a) == 1;
++}
++
++// The SecurityFunctionTableA, built once: dwVersion then one pointer per
++// entry (sspi.h order). Entries Windows declares but nothing client-side
++// needs still point at real handlers, which answer with the documented
++// "this package does not do that" status.
++gaddr SecurityTable() {
++  static gaddr table = 0;
++  if (table) return table;
++  table = HeapAllocProcess(0x78, true);
++  Wr32(table + 0x00, 1);  // dwVersion
++  struct Entry {
++    uint32_t off;
++    const char* name;
++  };
++  static const Entry kEntries[] = {
++      {0x04, "EnumerateSecurityPackagesA"},
++      {0x08, "QueryCredentialsAttributesA"},
++      {0x0C, "AcquireCredentialsHandleA"},
++      {0x10, "FreeCredentialsHandle"},
++      {0x18, "InitializeSecurityContextA"},
++      {0x1C, "AcceptSecurityContext"},
++      {0x20, "CompleteAuthToken"},
++      {0x24, "DeleteSecurityContext"},
++      {0x28, "ApplyControlToken"},
++      {0x2C, "QueryContextAttributesA"},
++      {0x30, "ImpersonateSecurityContext"},
++      {0x34, "RevertSecurityContext"},
++      {0x38, "MakeSignature"},
++      {0x3C, "VerifySignature"},
++      {0x40, "FreeContextBuffer"},
++      {0x44, "QuerySecurityPackageInfoA"},
++      {0x50, "ExportSecurityContext"},
++      {0x54, "ImportSecurityContextA"},
++      {0x58, "AddCredentialsA"},
++      {0x60, "QuerySecurityContextToken"},
++      {0x64, "EncryptMessage"},
++      {0x68, "DecryptMessage"},
++  };
++  for (const Entry& e : kEntries) Wr32(table + e.off, ThunkFor("secur32.dll", e.name));
++  return table;
++}
++
++// Fills a SecPkgInfoA (fCapabilities, wVersion, wRPCID, cbMaxToken, Name,
++// Comment) in one guest block with its strings.
++gaddr PackageInfo() {
++  static const char kComment[] = "Schannel TLS client";
++  const uint32_t name_len = uint32_t(std::strlen(kUnispName) + 1);
++  const uint32_t comment_len = uint32_t(sizeof kComment);
++  gaddr p = HeapAllocProcess(24 + name_len + comment_len, false);
++  gaddr name = p + 24, comment = name + name_len;
++  // Integrity, privacy, stream, mutual auth.
++  Wr32(p + 0, 0x1 | 0x2 | 0x4 | 0x10);
++  Wr16(p + 4, 1);  // wVersion
++  Wr16(p + 6, 0x10);  // wRPCID
++  Wr32(p + 8, 0x4000);  // cbMaxToken
++  Wr32(p + 12, name);
++  Wr32(p + 16, comment);
++  std::memcpy(GPtr(name), kUnispName, name_len);
++  std::memcpy(GPtr(comment), kComment, comment_len);
++  return p;
++}
++
++uint32_t Unsupported() { return kSecEUnsupportedFunction; }
++
++}  // namespace
++
++// ---- the dispatch table --------------------------------------------------
++
++HLE("secur32.dll", InitSecurityInterfaceA, 0) { return SecurityTable(); }
++
++HLE("secur32.dll", EnumerateSecurityPackagesA, 2) {
++  gaddr count = Arg(c, 0), out = Arg(c, 1);
++  if (count) Wr32(count, 1);
++  if (out) Wr32(out, PackageInfo());
++  return kSecEOk;
++}
++
++HLE("secur32.dll", QuerySecurityPackageInfoA, 2) {
++  gaddr out = Arg(c, 1);
++  if (!out) return kSecEInvalidParameter;
++  Wr32(out, PackageInfo());
++  return kSecEOk;
++}
++
++HLE("secur32.dll", QueryCredentialsAttributesA, 3) { return Unsupported(); }
++HLE("secur32.dll", AcceptSecurityContext, 9) { return Unsupported(); }
++HLE("secur32.dll", ImpersonateSecurityContext, 1) { return Unsupported(); }
++HLE("secur32.dll", RevertSecurityContext, 1) { return Unsupported(); }
++HLE("secur32.dll", MakeSignature, 4) { return Unsupported(); }
++HLE("secur32.dll", VerifySignature, 3) { return Unsupported(); }
++HLE("secur32.dll", ExportSecurityContext, 4) { return Unsupported(); }
++HLE("secur32.dll", ImportSecurityContextA, 5) { return Unsupported(); }
++HLE("secur32.dll", AddCredentialsA, 5) { return kSecEOk; }
++HLE("secur32.dll", QuerySecurityContextToken, 2) { return Unsupported(); }
++
++// Schannel has no extra token to process after the last handshake flight.
++HLE("secur32.dll", CompleteAuthToken, 2) { return kSecEOk; }
++
++HLE("secur32.dll", AcquireCredentialsHandleA, 9) {
++  gaddr ph = Arg(c, 7);
++  if (!ph) return kSecEInvalidParameter;
++  gaddr auth = Arg(c, 4);  // SCHANNEL_CRED*
++  uint32_t flags = auth ? Rd32(auth + 0x30) : 0;
++  uint32_t protocols = auth ? Rd32(auth + 0x20) : 0;
++
++  auto cred = std::make_shared<Credential>();
++  // Schannel's default is automatic validation; manual means the caller
++  // checks the chain itself.
++  cred->verify = (flags & kSchCredManualValidation) == 0;
++  cred->no_name_check = (flags & kSchCredNoSenameCheck) != 0;
++
++  cred->ssl_ctx = SSL_CTX_new(TLS_client_method());
++  if (!cred->ssl_ctx) {
++    LogOpenSsl("SSL_CTX_new");
++    return kSecEInternalError;
++  }
++  // The engine's floor is TLS 1.2 (the host stack's default). A caller that
++  // asks for older protocols still gets at most 1.2, as a current Windows
++  // would negotiate for the same credential.
++  if (protocols) {
++    int maxv = (protocols & kSpProtTls12Client) ? TLS1_2_VERSION
++               : (protocols & kSpProtTls11Client) ? TLS1_1_VERSION
++               : (protocols & kSpProtTls1Client) ? TLS1_VERSION
++                                                 : SSL3_VERSION;
++    int minv = (protocols & kSpProtSsl3Client) ? SSL3_VERSION
++               : (protocols & kSpProtTls1Client) ? TLS1_VERSION
++               : (protocols & kSpProtTls11Client) ? TLS1_1_VERSION
++                                                  : TLS1_2_VERSION;
++    if (maxv > TLS1_2_VERSION) maxv = TLS1_2_VERSION;
++    if (minv > maxv) minv = maxv;
++    SSL_CTX_set_max_proto_version(cred->ssl_ctx, maxv);
++    SSL_CTX_set_min_proto_version(cred->ssl_ctx, minv);
++  }
++  if (cred->verify) {
++    SSL_CTX_set_default_verify_paths(cred->ssl_ctx);
++    SSL_CTX_set_verify(cred->ssl_ctx, SSL_VERIFY_PEER, nullptr);
++  } else {
++    SSL_CTX_set_verify(cred->ssl_ctx, SSL_VERIFY_NONE, nullptr);
++  }
++
++  uint32_t id;
++  {
++    std::lock_guard<std::mutex> l(g_mu);
++    id = NewId();
++    g_creds[id] = cred;
++  }
++  PutHandle(ph, id);
++  return kSecEOk;
++}
++
++HLE("secur32.dll", FreeCredentialsHandle, 1) {
++  uint32_t id = HandleId(Arg(c, 0));
++  std::shared_ptr<Credential> cred;
++  {
++    std::lock_guard<std::mutex> l(g_mu);
++    auto it = g_creds.find(id);
++    if (it == g_creds.end()) return kSecEInvalidHandle;
++    cred = it->second;
++    g_creds.erase(it);
++  }
++  if (cred->ssl_ctx) SSL_CTX_free(cred->ssl_ctx);
++  return kSecEOk;
++}
++
++HLE("secur32.dll", DeleteSecurityContext, 1) {
++  uint32_t id = HandleId(Arg(c, 0));
++  std::shared_ptr<TlsContext> cx;
++  {
++    std::lock_guard<std::mutex> l(g_mu);
++    auto it = g_contexts.find(id);
++    if (it == g_contexts.end()) return kSecEInvalidHandle;
++    cx = it->second;
++    g_contexts.erase(it);
++  }
++  if (cx->ssl) SSL_free(cx->ssl);  // also frees the BIOs
++  return kSecEOk;
++}
++
++HLE("secur32.dll", ApplyControlToken, 2) {
++  auto cx = FindContext(HandleId(Arg(c, 0)));
++  if (!cx) return kSecEInvalidHandle;
++  gaddr desc = Arg(c, 1);
++  SecBuf b = GetBuf(desc, 0);
++  if (b.type == kSecBufferToken && b.cb == 4 && Rd32(b.ptr) == kSchannelShutdown) {
++    cx->shutdown = true;
++    return kSecEOk;
++  }
++  return kSecEInvalidParameter;
++}
++
++HLE("secur32.dll", QueryContextAttributesA, 3) {
++  auto cx = FindContext(HandleId(Arg(c, 0)));
++  if (!cx) return kSecEInvalidHandle;
++  uint32_t attr = Arg(c, 1);
++  gaddr out = Arg(c, 2);
++  if (attr == kSecPkgAttrStreamSizes) {
++    if (!out) return kSecEInvalidParameter;
++    // TLS record: 5-byte header; the trailer carries the explicit IV, MAC
++    // and padding of the block cipher suites, which is what a caller must
++    // leave room for after each message.
++    Wr32(out + 0, 5);            // cbHeader
++    Wr32(out + 4, 1024);         // cbTrailer
++    Wr32(out + 8, 16384);        // cbMaximumMessage
++    Wr32(out + 12, 4);           // cBuffers
++    Wr32(out + 16, 16);          // cbBlockSize
++    return kSecEOk;
++  }
++  if (attr == kSecPkgAttrSizes) {
++    if (!out) return kSecEInvalidParameter;
++    Wr32(out + 0, 0x4000);  // cbMaxToken
++    Wr32(out + 4, 0);       // cbMaxSignature
++    Wr32(out + 8, 16);      // cbBlockSize
++    Wr32(out + 12, 1024);   // cbSecurityTrailer
++    return kSecEOk;
++  }
++  return Unsupported();
++}
++
++HLE("secur32.dll", FreeContextBuffer, 1) {
++  gaddr p = Arg(c, 0);
++  if (p) HeapFreeProcess(p);
++  return kSecEOk;
++}
++
++// ---- handshake -----------------------------------------------------------
++
++HLE("secur32.dll", InitializeSecurityContextA, 12) {
++  uint32_t cred_id = HandleId(Arg(c, 0));
++  bool first = Arg(c, 1) == 0;
++  std::string target = Arg(c, 2) ? GStr(Arg(c, 2)) : std::string();
++  uint32_t req_flags = Arg(c, 3);
++  gaddr in_desc = Arg(c, 6);
++  gaddr new_ctx = Arg(c, 8);
++  gaddr out_desc = Arg(c, 9);
++  gaddr out_flags = Arg(c, 10);
++
++  auto cred = FindCred(cred_id);
++  if (!cred) return kSecEInvalidHandle;
++  RECOMP_TRACE("secur32: InitializeSecurityContextA cred %u first %d target '%s'\n", cred_id, (int)first, target.c_str());
++
++  std::shared_ptr<TlsContext> cx;
++  if (first) {
++    if (!new_ctx) return kSecEInvalidParameter;
++    auto made = std::make_shared<TlsContext>();
++    made->cred = cred;
++    made->req_flags = req_flags;
++    made->ssl = SSL_new(cred->ssl_ctx);
++    if (made->ssl) {
++      // The caller moves the ciphertext itself: every record it receives is
++      // fed in through InitializeSecurityContext/DecryptMessage and every
++      // record the engine produces is returned as an output token.
++      made->rbio = BIO_new(BIO_s_mem());
++      made->wbio = BIO_new(BIO_s_mem());
++      if (!made->rbio || !made->wbio) {
++        LogOpenSsl("BIO_new");
++        SSL_free(made->ssl);
++        made->ssl = nullptr;
++        return kSecEInternalError;
++      }
++      SSL_set_bio(made->ssl, made->rbio, made->wbio);
++    }
++    if (!made->ssl || !made->rbio || !made->wbio) {
++      LogOpenSsl("SSL_new");
++      if (made->ssl) SSL_free(made->ssl);
++      return kSecEInternalError;
++    }
++    if (!target.empty() && !cred->no_name_check) {
++      if (!IsIpLiteral(target)) SSL_set_tlsext_host_name(made->ssl, target.c_str());
++      if (cred->verify) {
++        X509_VERIFY_PARAM* p = SSL_get0_param(made->ssl);
++        X509_VERIFY_PARAM_set_hostflags(p, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
++        X509_VERIFY_PARAM_set1_host(p, target.c_str(), 0);
++      }
++    }
++    SSL_set_connect_state(made->ssl);
++    uint32_t id;
++    {
++      std::lock_guard<std::mutex> l(g_mu);
++      id = NewId();
++      g_contexts[id] = made;
++    }
++    PutHandle(new_ctx, id);
++    cx = made;
++  } else {
++    cx = FindContext(HandleId(Arg(c, 1)));
++    if (!cx) return kSecEInvalidHandle;
++    cx->req_flags = req_flags;
++  }
++
++  std::vector<uint8_t> token;
++  uint32_t status = kSecIContinueNeeded;
++
++  if (cx->shutdown && !in_desc) {
++    ERR_clear_error();
++    int r = SSL_shutdown(cx->ssl);
++    token = Drain(cx->wbio);
++    status = r >= 0 ? kSecEOk : kSecEInternalError;
++    if (r < 0) LogOpenSsl("SSL_shutdown");
++  } else {
++    SecBuf in{kSecBufferEmpty, 0, 0};
++    bool have_in = false;
++    if (in_desc) {
++      uint32_t n = BufCount(in_desc);
++      for (uint32_t i = 0; i < n; i++) {
++        SecBuf b = GetBuf(in_desc, i);
++        if ((b.type == kSecBufferToken || b.type == kSecBufferData) && b.cb && b.ptr) {
++          in = b;
++          have_in = true;
++          break;
++        }
++      }
++    }
++    if (have_in) FeedRecords(*cx, in.ptr, in.cb);
++
++    ERR_clear_error();
++    int r = SSL_do_handshake(cx->ssl);
++    token = Drain(cx->wbio);
++    Reclaim(*cx);
++    uint32_t extra = ExtraBytes(*cx);
++    int err = r == 1 ? 0 : SSL_get_error(cx->ssl, r);
++    RECOMP_TRACE("secur32: SSL_do_handshake r %d err %d status %08X\n", r, err, status);
++    if (r == 1) {
++      status = kSecEOk;
++    } else if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
++      // Nothing was consumed: the caller should add more ciphertext.
++      if (extra == in.cb && token.empty() && have_in)
++        status = kSecEIncompleteMessage;
++      else
++        status = kSecIContinueNeeded;
++    } else {
++      uint32_t v = VerifyStatus(cx->ssl);
++      status = v != kSecEOk ? v : kSecEInvalidToken;
++      LogOpenSsl("SSL_do_handshake");
++    }
++
++    // Report the unconsumed tail of the caller's ciphertext as EXTRA.
++    if (in_desc && have_in && BufCount(in_desc) > 1) {
++      uint32_t at = extra;
++      gaddr tail = in.ptr + (in.cb > at ? in.cb - at : 0);
++      SetBuf(in_desc, 1, at, at ? kSecBufferExtra : kSecBufferEmpty, at ? tail : 0);
++    }
++  }
++
++  uint32_t hn = BufCount(out_desc);
++  if (hn > 0) {
++    gaddr p = 0;
++    if (!token.empty()) {
++      p = HeapAllocProcess(token.size(), false);
++      std::memcpy(GPtr(p), token.data(), token.size());
++    }
++    SetBuf(out_desc, 0, uint32_t(token.size()), kSecBufferToken, p);
++    if (hn > 1) SetBuf(out_desc, 1, 0, kSecBufferEmpty, 0);
++  }
++  if (out_flags) Wr32(out_flags, cx->req_flags);
++  return status;
++}
++
++// ---- record layer --------------------------------------------------------
++
++HLE("secur32.dll", EncryptMessage, 4) {
++  auto cx = FindContext(HandleId(Arg(c, 0)));
++  if (!cx) return kSecEInvalidHandle;
++  gaddr desc = Arg(c, 2);
++  uint32_t n = BufCount(desc);
++  int hi = -1, di = -1, ti = -1;
++  for (uint32_t i = 0; i < n; i++) {
++    uint32_t t = GetBuf(desc, i).type;
++    if (t == kSecBufferStreamHeader) hi = int(i);
++    else if (t == kSecBufferData) di = int(i);
++    else if (t == kSecBufferStreamTrailer) ti = int(i);
++  }
++  if (di < 0) return kSecEInvalidParameter;
++  SecBuf data = GetBuf(desc, uint32_t(di));
++  if (!data.ptr) return kSecEInvalidParameter;
++  uint32_t hcap = hi >= 0 ? GetBuf(desc, uint32_t(hi)).cb : 0;
++  uint32_t tcap = ti >= 0 ? GetBuf(desc, uint32_t(ti)).cb : 0;
++  if (hcap < 5) return kSecEBufferTooSmall;
++
++  ERR_clear_error();
++  int r = SSL_write(cx->ssl, GPtr(data.ptr), int(data.cb));
++  RECOMP_TRACE("secur32: SSL_write r %d status %08X\n", r, SSL_get_error(cx->ssl, r));
++  if (r <= 0) {
++    LogOpenSsl("SSL_write");
++    return SSL_get_error(cx->ssl, r) == SSL_ERROR_WANT_WRITE ? kSecEBufferTooSmall
++                                                             : kSecEInternalError;
++  }
++  std::vector<uint8_t> rec = Drain(cx->wbio);
++  if (rec.size() < 5) return kSecEInternalError;
++  uint32_t body = uint32_t(rec.size() - 5);
++  if (body > data.cb + tcap) return kSecEBufferTooSmall;
++
++  gaddr hptr = GetBuf(desc, uint32_t(hi)).ptr;
++  std::memcpy(GPtr(hptr), rec.data(), 5);
++  uint32_t in_data = std::min(body, data.cb);
++  std::memcpy(GPtr(data.ptr), rec.data() + 5, in_data);
++  uint32_t in_trailer = body - in_data;
++  gaddr tptr = ti >= 0 ? GetBuf(desc, uint32_t(ti)).ptr : 0;
++  if (in_trailer && tptr) std::memcpy(GPtr(tptr), rec.data() + 5 + in_data, in_trailer);
++  SetBuf(desc, uint32_t(hi), 5, kSecBufferStreamHeader, hptr);
++  SetBuf(desc, uint32_t(di), in_data, kSecBufferData, data.ptr);
++  if (ti >= 0) SetBuf(desc, uint32_t(ti), in_trailer, kSecBufferStreamTrailer, tptr);
++  return kSecEOk;
++}
++
++HLE("secur32.dll", DecryptMessage, 4) {
++  auto cx = FindContext(HandleId(Arg(c, 0)));
++  if (!cx) return kSecEInvalidHandle;
++  gaddr desc = Arg(c, 2);
++  uint32_t n = BufCount(desc);
++  int di = -1;
++  for (uint32_t i = 0; i < n; i++) {
++    uint32_t t = GetBuf(desc, i).type;
++    if (t == kSecBufferData) di = int(i);
++  }
++  if (di < 0) return kSecEInvalidParameter;
++  SecBuf in = GetBuf(desc, uint32_t(di));
++  if (!in.ptr || !in.cb) return kSecEInvalidParameter;
++  FeedRecords(*cx, in.ptr, in.cb);
++
++  ERR_clear_error();
++  int r = SSL_read(cx->ssl, GPtr(in.ptr), int(in.cb));
++  Reclaim(*cx);
++  uint32_t extra = ExtraBytes(*cx);
++  RECOMP_TRACE("secur32: SSL_read r %d status %08X\n", r, SSL_get_error(cx->ssl, r));
++  if (r > 0) {
++    gaddr tail = in.ptr + (in.cb > extra ? in.cb - extra : 0);
++    if (n > 0) SetBuf(desc, 0, 0, kSecBufferStreamHeader, in.ptr);
++    if (n > 1) SetBuf(desc, 1, uint32_t(r), kSecBufferData, in.ptr);
++    if (n > 2) SetBuf(desc, 2, 0, kSecBufferStreamTrailer, 0);
++    if (n > 3) SetBuf(desc, 3, extra, extra ? kSecBufferExtra : kSecBufferEmpty, extra ? tail : 0);
++    return kSecEOk;
++  }
++  if (r == 0) {
++    if (n > 0) SetBuf(desc, 0, 0, kSecBufferStreamHeader, in.ptr);
++    if (n > 1) SetBuf(desc, 1, 0, kSecBufferEmpty, 0);
++    if (n > 3) SetBuf(desc, 3, extra, extra ? kSecBufferExtra : kSecBufferEmpty,
++                      extra ? in.ptr + (in.cb - extra) : 0);
++    return kSecIContextExpired;
++  }
++  int err = SSL_get_error(cx->ssl, r);
++  if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
++    if (extra == in.cb) return kSecEIncompleteMessage;
++    // Whole non-application records (a ticket, a hello request) were
++    // consumed; hand the rest back and let the caller add more.
++    if (n > 1) SetBuf(desc, 1, 0, kSecBufferEmpty, 0);
++    if (n > 3)
++      SetBuf(desc, 3, extra, extra ? kSecBufferExtra : kSecBufferEmpty,
++             extra ? in.ptr + (in.cb - extra) : 0);
++    return kSecEOk;
++  }
++  LogOpenSsl("SSL_read");
++  uint32_t v = VerifyStatus(cx->ssl);
++  return v != kSecEOk ? v : kSecEInvalidToken;
++}
++
++}  // namespace recomp::hle
+diff --git a/platforms/win32/src/win32/user32_window.cpp b/platforms/win32/src/win32/user32_window.cpp
+index d72bda4..362f9c5 100644
+--- a/platforms/win32/src/win32/user32_window.cpp
++++ b/platforms/win32/src/win32/user32_window.cpp
+@@ -79,6 +79,11 @@ struct Window {
+   uint32_t wndproc = 0, style = 0, exstyle = 0, parent = 0, id = 0;
+   uint32_t hinst = 0, userdata = 0, class_style = 0;
+   int x = 0, y = 0, w = 0, h = 0;  // window rect (screen)
++  // Last rect the window had while it did not cover the screen: what
++  // GetWindowPlacement reports as the restored position. Updated by
++  // ApplyRect, so a borderless-fullscreen window still reports the rect it
++  // returns to.
++  int nx = 0, ny = 0, nw = 0, nh = 0;
+   std::string title;
+   std::vector<uint8_t> extra;      // cbWndExtra bytes (GetWindowLong >= 0)
+   uint32_t tid = 0;
+@@ -1247,6 +1252,10 @@ HLE("user32.dll", CreateWindowExA, 12) {
+   win.y = y;
+   win.w = w;
+   win.h = h;
++  win.nx = x;
++  win.ny = y;
++  win.nw = w;
++  win.nh = h;
+   win.title = title_va ? GStr(title_va) : "";
+   win.tid = CurrentThread()->tid;
+   if (!(style & WS_CHILD)) {
+@@ -1298,8 +1307,18 @@ HLE("user32.dll", CreateWindowExA, 12) {
+         wp->visible = true;
+         if (wp->sdl) SDL_ShowWindow(wp->sdl);
+       }
++      g_active = g_focus = hwnd;
+     }
+     UpdateFullscreen(hwnd);
++    // A window created with WS_VISIBLE is shown by CreateWindowEx itself,
++    // so a later ShowWindow would not send these notifications. Classic /
++    // Seasons / Rio start loading from WM_SHOWWINDOW/WM_SIZE.
++    Send(hwnd, WM_SHOWWINDOW, 1, 0);
++    Send(hwnd, WM_MOVE, 0, MkLparam(x, y));
++    Send(hwnd, WM_SIZE, 0, MkLparam(w, h));
++    Send(hwnd, WM_ACTIVATEAPP, 1, 0);
++    Send(hwnd, WM_ACTIVATE, 1, 0);
++    Send(hwnd, WM_SETFOCUS, 0, 0);
+   }
+   return hwnd;
+ }
+@@ -1346,28 +1365,32 @@ HLE("user32.dll", ShowWindow, 2) {
+   // its WM_ACTIVATEAPP(0) handler, so activating here would loop).
+   bool activates = restore || cmd == 5;
+   SDL_Window* sdl;
+-  bool exclusive;
++  bool fs, was_min;
+   {
+     std::lock_guard<std::recursive_mutex> l(g_mu);
+     Window* w = Win(hwnd);
+     if (!w) return 0;
+     was = w->visible;
++    was_min = w->minimized;
+     w->visible = show;
+     if (minimize) w->minimized = true;
+     if (restore) w->minimized = false;
+     sdl = w->sdl;
+-    exclusive = w->mode_w != 0;
++    fs = w->mode_w != 0 ||
++         (FullscreenPolicy() != win32::GameConfig::Fullscreen::Window &&
++          (w->fullscreen || CoversScreen(*w)));
+   }
+   if (sdl) {
+     if (!show) {
+       SDL_HideWindow(sdl);
+     } else {
+       SDL_ShowWindow(sdl);
+-      // Behind an exclusive-mode "screen" the game's minimize on
+-      // deactivation is not carried out: the window simply stays put
+-      // while the game idles, and focusing it again resumes the game.
+-      if (minimize && !exclusive) SDL_MinimizeWindow(sdl);
+-      if (restore && !exclusive) SDL_RestoreWindow(sdl);
++      // Behind an exclusive-mode or fullscreen "screen" the game's minimize on
++      // deactivation is not carried out, and SW_SHOWNORMAL/SW_RESTORE must not
++      // call SDL_RestoreWindow (on Wayland that resets size/maximized state).
++      if (minimize && !fs) SDL_MinimizeWindow(sdl);
++      if (restore && !fs && (was_min || (SDL_GetWindowFlags(sdl) & SDL_WINDOW_MINIMIZED)))
++        SDL_RestoreWindow(sdl);
+     }
+   }
+   UpdateFullscreen(hwnd);
+@@ -1456,6 +1479,15 @@ void ApplyRect(uint32_t hwnd, int x, int y, int w, int h, bool move, bool size)
+       win->h = h;
+       sized = true;
+     }
++    // A rect that no longer covers the screen is the one the window
++    // restores to (WINDOWPLACEMENT's rcNormalPosition).
++    if (!(win->x <= 0 && win->y <= 0 && win->x + win->w >= g_display_w &&
++          win->y + win->h >= g_display_h)) {
++      win->nx = win->x;
++      win->ny = win->y;
++      win->nw = win->w;
++      win->nh = win->h;
++    }
+     ClientSize(*win, &cw, &ch);
+     // In exclusive mode the host window keeps the display-mode size, and
+     // a fullscreen one the screen's.
+@@ -1489,6 +1521,60 @@ HLE("user32.dll", MoveWindow, 6) {
+   return 1;
+ }
+ 
++// WINDOWPLACEMENT (44 bytes on x86): length, flags, showCmd, ptMinPosition,
++// ptMaxPosition, rcNormalPosition. The game saves one before going
++// borderless-fullscreen and puts it back when the option is turned off, so
++// rcNormalPosition is the restored (windowed) rect, not the current one.
++HLE("user32.dll", GetWindowPlacement, 2) {
++  uint32_t hwnd = Arg(c, 0), wp = Arg(c, 1);
++  if (!wp) return 0;
++  int x, y, w, h;
++  bool minimized;
++  {
++    std::lock_guard<std::recursive_mutex> l(g_mu);
++    Window* win = Win(hwnd);
++    if (!win) return 0;
++    x = win->nx;
++    y = win->ny;
++    w = win->nw;
++    h = win->nh;
++    minimized = win->minimized;
++  }
++  Wr32(wp + 0, 44);
++  Wr32(wp + 4, 0);
++  Wr32(wp + 8, minimized ? 2u : 1u);  // SW_SHOWMINIMIZED / SW_SHOWNORMAL
++  for (uint32_t off : {12u, 20u}) {
++    Wr32(wp + off, uint32_t(int32_t(-1)));
++    Wr32(wp + off + 4, uint32_t(int32_t(-1)));
++  }
++  Wr32(wp + 28, uint32_t(x));
++  Wr32(wp + 32, uint32_t(y));
++  Wr32(wp + 36, uint32_t(x + w));
++  Wr32(wp + 40, uint32_t(y + h));
++  return 1;
++}
++
++HLE("user32.dll", SetWindowPlacement, 2) {
++  uint32_t hwnd = Arg(c, 0), wp = Arg(c, 1);
++  if (!wp || Rd32(wp) != 44) return 0;
++  uint32_t show = Rd32(wp + 8);
++  int x = int32_t(Rd32(wp + 28)), y = int32_t(Rd32(wp + 32));
++  int w = int32_t(Rd32(wp + 36)) - x, h = int32_t(Rd32(wp + 40)) - y;
++  if (w <= 0 || h <= 0) return 0;
++  {
++    std::lock_guard<std::recursive_mutex> l(g_mu);
++    Window* win = Win(hwnd);
++    if (!win) return 0;
++    win->minimized = show == 2 || show == 6 || show == 7;
++    win->nx = x;
++    win->ny = y;
++    win->nw = w;
++    win->nh = h;
++  }
++  ApplyRect(hwnd, x, y, w, h, true, true);
++  return 1;
++}
++
+ HLE("user32.dll", AdjustWindowRect, 3) {
+   uint32_t rc = Arg(c, 0);
+   int border, caption;
+@@ -2208,8 +2294,15 @@ HLE("user32.dll", ClipCursor, 1) {
+       g_mouse_y = std::clamp(g_mouse_y, g_clip.t, std::max(g_clip.t, g_clip.b - 1));
+     }
+   }
+-  if (release && release != grab) SDL_SetWindowRelativeMouseMode(release, false);
+-  if (grab && !Background()) SDL_SetWindowRelativeMouseMode(grab, true);
++  if (release && release != grab) {
++    SDL_SetWindowRelativeMouseMode(release, false);
++    if (g_cursor_count >= 0) SDL_ShowCursor();
++  }
++  if (grab && !Background()) {
++    SDL_SetWindowRelativeMouseMode(grab, true);
++    // The game draws its own cursor; do not also show the host arrow.
++    SDL_HideCursor();
++  }
+   return 1;
+ }
+ 
+diff --git a/platforms/win32/src/win32/vcruntime_eh.cpp b/platforms/win32/src/win32/vcruntime_eh.cpp
+index 22f8a8e..cfd8b44 100644
+--- a/platforms/win32/src/win32/vcruntime_eh.cpp
++++ b/platforms/win32/src/win32/vcruntime_eh.cpp
+@@ -268,6 +268,8 @@ HLE64("vcruntime140.dll", _CxxThrowException, kCdecl) {
+   if (!obj && !ti) FatalF("guest C++: rethrow (throw;): not supported yet");
+   const PeImage* img = ImageAt(ti);
+   uint64_t params[4] = {kCxxMagic, obj, ti, img ? img->image_base : 0};
++  RECOMP_TRACE("_CxxThrowException obj %llX ti %llX img %llX\n", (unsigned long long)obj,
++               (unsigned long long)ti, (unsigned long long)(img ? img->image_base : 0));
+   seh64::Raise(c, kCxxException, seh64::kNoncontinuable, params, 4, seh64::AtReturn(c));
+   FatalF("guest C++ exception continued");
+ }
+diff --git a/platforms/win32/src/win32/wbem.cpp b/platforms/win32/src/win32/wbem.cpp
+index cb4e1ce..ca2ae55 100644
+--- a/platforms/win32/src/win32/wbem.cpp
++++ b/platforms/win32/src/win32/wbem.cpp
+@@ -175,6 +175,18 @@ HLE_NAMED("wbemprox.dll", "IWbemServices::CreateInstanceEnum", Svc_CreateInstanc
+   return S_OK;
+ }
+ 
++// (strQueryLanguage, strQuery, lFlags, pCtx, ppEnum)
++HLE_NAMED("wbemprox.dll", "IWbemServices::ExecQuery", Svc_ExecQuery, 6) {
++  Self<Services>(c, "IWbemServices");
++  uint32_t out = Arg(c, 5);
++  if (!out) return E_POINTER;
++  std::u16string lang = Arg(c, 1) ? GWStr(Arg(c, 1)) : u"";
++  std::u16string query = Arg(c, 2) ? GWStr(Arg(c, 2)) : u"";
++  WarnF("wbem: ExecQuery(%s, %s)\n", win32::Narrow(lang).c_str(), win32::Narrow(query).c_str());
++  Wr32(out, com::Publish(std::make_shared<InstanceEnum>(), EnumVtable()));
++  return S_OK;
++}
++
+ // ---- IEnumWbemClassObject -----------------------------------------------------
+ 
+ HLE_NAMED("wbemprox.dll", "IEnumWbemClassObject::QueryInterface", Enum_QueryInterface, 3) {
+diff --git a/platforms/win32/src/win32/ws2_32.cpp b/platforms/win32/src/win32/ws2_32.cpp
+index 3e3ae1f..53abbb8 100644
+--- a/platforms/win32/src/win32/ws2_32.cpp
++++ b/platforms/win32/src/win32/ws2_32.cpp
+@@ -5,14 +5,20 @@
+ 
+ #include <arpa/inet.h>
+ #include <fcntl.h>
++#include <netdb.h>
+ #include <netinet/in.h>
++#include <netinet/tcp.h>
+ #include <sys/ioctl.h>
++#include <sys/select.h>
+ #include <sys/socket.h>
++#include <sys/time.h>
+ #include <unistd.h>
+ 
++#include <cctype>
+ #include <cerrno>
+ #include <cstring>
+ #include <memory>
++#include <string>
+ 
+ #include "runtime/log.h"
+ #include "win32/hle.h"
+@@ -23,18 +29,32 @@ namespace {
+ 
+ // Windows' address families and the WSA error codes used here.
+ constexpr uint16_t kAfInet = 2, kAfInet6 = 23;
+-constexpr uint32_t kWsaEInval = 10022, kWsaEWouldBlock = 10035, kWsaEMsgSize = 10040,
+-                   kWsaEAfNoSupport = 10047, kWsaEAddrInUse = 10048,
+-                   kWsaEAddrNotAvail = 10049, kWsaENetDown = 10050, kWsaENetUnreach = 10051,
+-                   kWsaEConnReset = 10054, kWsaENotSock = 10038, kWsaEAcces = 10013,
+-                   kWsaEConnRefused = 10061, kWsaEHostUnreach = 10065;
++constexpr uint32_t kWsaEIntr = 10004, kWsaEAcces = 10013, kWsaEInval = 10022,
++                   kWsaEMFile = 10024, kWsaEWouldBlock = 10035, kWsaEInProgress = 10036,
++                   kWsaEAlready = 10037, kWsaENotSock = 10038, kWsaEDestAddrReq = 10039,
++                   kWsaEMsgSize = 10040, kWsaEProtoOpt = 10042, kWsaENoProtoOpt = 10042,
++                   kWsaEProtoNoSupport = 10043, kWsaEAfNoSupport = 10047,
++                   kWsaEAddrInUse = 10048, kWsaEAddrNotAvail = 10049, kWsaENetDown = 10050,
++                   kWsaENetUnreach = 10051, kWsaENetReset = 10052, kWsaEConnAborted = 10053,
++                   kWsaEConnReset = 10054, kWsaENoBufs = 10055, kWsaEIsConn = 10056,
++                   kWsaENotConn = 10057, kWsaEShutdown = 10058, kWsaETimedOut = 10060,
++                   kWsaEConnRefused = 10061, kWsaEHostUnreach = 10065,
++                   kWsaEHostNotFound = 11001, kWsaETryAgain = 11002;
+ 
+ struct SocketObject : KObject {
+   SocketObject() : KObject(Type::Socket) {}
+   ~SocketObject() override {
+     if (fd >= 0) close(fd);
++    if (peer >= 0) close(peer);
+   }
+   int fd = -1;
++  // Legacy Rovio DRM: cloud.rovio.com / drm-pc.angrybirdsgame.com are
++  // mapped to loopback and this socket pair stands in for the dead
++  // activation service. No listening port and no helper process.
++  int peer = -1;
++  bool activation = false;
++  bool responded = false;
++  std::string request;
+ };
+ 
+ thread_local uint32_t t_wsa_error = 0;
+@@ -53,6 +73,21 @@ uint32_t WsaError(int e) {
+     case ECONNREFUSED: return kWsaEConnRefused;
+     case EACCES: return kWsaEAcces;
+     case ENOTSOCK: return kWsaENotSock;
++    case EINTR: return kWsaEIntr;
++    case EMFILE: return kWsaEMFile;
++    case EINPROGRESS: return kWsaEWouldBlock;
++    case EALREADY: return kWsaEAlready;
++    case EISCONN: return kWsaEIsConn;
++    case ENOTCONN: return kWsaENotConn;
++    case ETIMEDOUT: return kWsaETimedOut;
++    case ENETDOWN: return kWsaENetDown;
++    case ENETRESET: return kWsaENetReset;
++    case ECONNABORTED: return kWsaEConnAborted;
++    case ENOBUFS: return kWsaENoBufs;
++    case EPIPE: return kWsaEShutdown;
++    case ENOPROTOOPT: return kWsaENoProtoOpt;
++    case EOPNOTSUPP: return kWsaEProtoNoSupport;
++    case EDESTADDRREQ: return kWsaEDestAddrReq;
+     default: return kWsaENetDown;
+   }
+ }
+@@ -135,6 +170,12 @@ void ToGuest(const sockaddr_storage& in, gaddr sa, gaddr len_va) {
+ 
+ }  // namespace
+ 
++#define RECOMP_WS2_NAME(name, nargs)                                                \
++  static uint64_t ws_##name(::recomp::Ctx& c);                                      \
++  static ::recomp::hle::Registrar ws_reg_##name{"ws2_32.dll", #name, nargs,         \
++                                                &ws_##name, true};                  \
++  static uint64_t ws_##name([[maybe_unused]] ::recomp::Ctx& c)
++
+ #define RECOMP_WS2(ord, name, nargs)                                                \
+   static uint64_t ws_##name(::recomp::Ctx& c);                                      \
+   static ::recomp::hle::Registrar ws_reg_##name{"ws2_32.dll", #name, nargs,         \
+@@ -279,4 +320,492 @@ HLE64("ws2_32.dll", inet_ntop, 4) {
+   return Arg(c, 2);
+ }
+ 
++
++// ---- connections and streams ------------------------------------------------
++
++bool ActivationBody(const std::string& request) {
++  // The original server echoed the request's `types` field and returned
++  // success for base-game activation. Reward checks stay unsuccessful.
++  return request.find("checkKey") == std::string::npos;
++}
++
++std::string ActivationResponse(const std::string& request) {
++  if (!ActivationBody(request)) return "status=0&msg=invalid-key";
++  std::string type;
++  size_t q = request.find("types=");
++  if (q != std::string::npos) {
++    q += 6;
++    size_t e = request.find_first_of("& \r\n", q);
++    type = request.substr(q, e == std::string::npos ? e : e - q);
++  }
++  return "status=1&type=" + type;
++}
++
++RECOMP_WS2(4, connect, 3) {
++  auto o = std::dynamic_pointer_cast<SocketObject>(GetHandle(uint32_t(Arg(c, 0))));
++  int fd = o ? o->fd : -1;
++  if (fd < 0) return Fail(kWsaENotSock);
++  sockaddr_storage sa;
++  socklen_t len;
++  if (!ToHost(Arg(c, 1), uint32_t(Arg(c, 2)), &sa, &len)) return Fail(kWsaEAfNoSupport);
++  if (sa.ss_family == AF_INET) {
++    auto* in = reinterpret_cast<sockaddr_in*>(&sa);
++    if (in->sin_addr.s_addr == htonl(INADDR_LOOPBACK) && ntohs(in->sin_port) == 80) {
++      int fds[2];
++      if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0) {
++        close(fd);
++        o->fd = fds[0];
++        o->peer = fds[1];
++        o->activation = true;
++        return 0;
++      }
++    }
++  }
++  int rc = ::connect(fd, reinterpret_cast<sockaddr*>(&sa), len);
++  return rc == 0 ? 0 : FailErrno();
++}
++
++// Windows' MSG_*: OOB, PEEK and DONTROUTE match; WAITALL differs from BSD.
++int HostMsgFlags(int f) {
++  int h = f & 0x7;
++#ifdef MSG_WAITALL
++  if (f & 0x8) h |= MSG_WAITALL;
++#endif
++  return h;
++}
++
++RECOMP_WS2(19, send, 4) {
++  auto o = std::dynamic_pointer_cast<SocketObject>(GetHandle(uint32_t(Arg(c, 0))));
++  int fd = o ? o->fd : -1;
++  if (fd < 0) return Fail(kWsaENotSock);
++  const size_t count = size_t(uint32_t(Arg(c, 2)));
++  if (o && o->activation) {
++    o->request.append(reinterpret_cast<const char*>(GPtr(Arg(c, 1))), count);
++    if (!o->responded && o->request.find("\r\n\r\n") != std::string::npos) {
++      const std::string body = ActivationResponse(o->request);
++      const char* ctype = !body.empty() && body[0] == '{' ? "application/json" : "text/plain";
++      const std::string head =
++          std::string("HTTP/1.1 200 OK\r\nContent-Type: ") + ctype +
++          "\r\nContent-Length: " + std::to_string(body.size()) +
++          "\r\nConnection: close\r\n\r\n";
++      const std::string response = head + body;
++      ::send(o->peer, response.data(), response.size(), kNoSignal);
++      ::shutdown(o->peer, SHUT_WR);
++      o->responded = true;
++    }
++    return uint64_t(uint32_t(count));
++  }
++  ssize_t n = ::send(fd, GPtr(Arg(c, 1)), count,
++                     HostMsgFlags(int(Arg(c, 3))) | kNoSignal);
++  return n < 0 ? FailErrno() : uint64_t(uint32_t(n));
++}
++
++RECOMP_WS2(16, recv, 4) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  ssize_t n = ::recv(fd, GPtr(Arg(c, 1)), size_t(uint32_t(Arg(c, 2))),
++                     HostMsgFlags(int(Arg(c, 3))));
++  return n < 0 ? FailErrno() : uint64_t(uint32_t(n));
++}
++
++RECOMP_WS2(13, listen, 2) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  return ::listen(fd, int(Arg(c, 1))) == 0 ? 0 : FailErrno();
++}
++
++RECOMP_WS2(1, accept, 3) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  sockaddr_storage sa{};
++  socklen_t len = sizeof sa;
++  int nfd = ::accept(fd, reinterpret_cast<sockaddr*>(&sa), &len);
++  if (nfd < 0) return FailErrno();
++  fcntl(nfd, F_SETFD, FD_CLOEXEC);
++#ifdef SO_NOSIGPIPE
++  int one = 1;
++  setsockopt(nfd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
++#endif
++  if (Arg(c, 1)) ToGuest(sa, Arg(c, 1), Arg(c, 2));
++  auto o = std::make_shared<SocketObject>();
++  o->fd = nfd;
++  return NewHandle(o);
++}
++
++RECOMP_WS2(22, shutdown, 2) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  return ::shutdown(fd, int(Arg(c, 1))) == 0 ? 0 : FailErrno();
++}
++
++RECOMP_WS2(6, getsockname, 3) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  sockaddr_storage sa{};
++  socklen_t len = sizeof sa;
++  if (::getsockname(fd, reinterpret_cast<sockaddr*>(&sa), &len) != 0) return FailErrno();
++  ToGuest(sa, Arg(c, 1), Arg(c, 2));
++  return 0;
++}
++
++RECOMP_WS2(5, getpeername, 3) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  sockaddr_storage sa{};
++  socklen_t len = sizeof sa;
++  if (::getpeername(fd, reinterpret_cast<sockaddr*>(&sa), &len) != 0) return FailErrno();
++  ToGuest(sa, Arg(c, 1), Arg(c, 2));
++  return 0;
++}
++
++RECOMP_WS2(57, gethostname, 2) {
++  char buf[256] = {};
++  if (::gethostname(buf, sizeof buf) != 0) return FailErrno();
++  uint32_t cap = uint32_t(Arg(c, 1));
++  if (std::strlen(buf) + 1 > cap) return Fail(kWsaEInval);
++  PutStr(Arg(c, 0), buf);
++  return 0;
++}
++
++// ---- socket options ---------------------------------------------------------
++
++// Windows SOL_SOCKET is 0xFFFF and its SO_* numbers differ from BSD's.
++// kind: 0 raw, 1 struct linger (u_short pair to int pair), 2 timeval (a
++// DWORD of milliseconds).
++int HostOpt(int level, int opt, int* host_level, int* kind) {
++  *kind = 0;
++  if (level == 0xFFFF) {
++    *host_level = SOL_SOCKET;
++    switch (opt) {
++      case 0x2: return SO_ACCEPTCONN;
++      case 0x4: return SO_REUSEADDR;
++      case 0x8: return SO_KEEPALIVE;
++      case 0x10: return SO_DONTROUTE;
++      case 0x20: return SO_BROADCAST;
++      case 0x80: *kind = 1; return SO_LINGER;
++      case 0x100: return SO_OOBINLINE;
++      case 0x1001: return SO_SNDBUF;
++      case 0x1002: return SO_RCVBUF;
++      case 0x1005: *kind = 2; return SO_SNDTIMEO;
++      case 0x1006: *kind = 2; return SO_RCVTIMEO;
++      case 0x1007: return SO_ERROR;
++      case 0x1008: return SO_TYPE;
++      default: return -1;
++    }
++  }
++  if (level == 6) {  // IPPROTO_TCP
++    *host_level = IPPROTO_TCP;
++    if (opt == 1) return TCP_NODELAY;  // TCP_NODELAY
++    return -1;
++  }
++  if (level == 0) {  // IPPROTO_IP
++    *host_level = IPPROTO_IP;
++    switch (opt) {
++      case 3: return IP_TOS;
++      case 4: return IP_TTL;
++      default: return -1;
++    }
++  }
++  return -1;
++}
++
++RECOMP_WS2(7, getsockopt, 5) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  int hl, kind;
++  int ho = HostOpt(int(Arg(c, 1)), int(Arg(c, 2)), &hl, &kind);
++  gaddr val = Arg(c, 3), len_va = Arg(c, 4);
++  if (ho < 0) return Fail(kWsaENoProtoOpt);
++  if (!val || !len_va) return Fail(kWsaEInval);
++  uint32_t cap = Rd32(len_va);
++  if (kind == 1) {
++    linger l{};
++    socklen_t n = sizeof l;
++    if (::getsockopt(fd, hl, ho, &l, &n) != 0) return FailErrno();
++    uint8_t b[4];
++    std::memcpy(b, &l, 4);
++    std::memcpy(GPtr(val), b, std::min<uint32_t>(cap, 4));
++    Wr32(len_va, 4);
++    return 0;
++  }
++  if (kind == 2) {
++    timeval tv{};
++    socklen_t n = sizeof tv;
++    if (::getsockopt(fd, hl, ho, &tv, &n) != 0) return FailErrno();
++    if (cap < 4) return Fail(kWsaEInval);
++    Wr32(val, uint32_t(tv.tv_sec * 1000 + tv.tv_usec / 1000));
++    Wr32(len_va, 4);
++    return 0;
++  }
++  int v = 0;
++  socklen_t n = sizeof v;
++  if (::getsockopt(fd, hl, ho, &v, &n) != 0) return FailErrno();
++  if (cap < n) n = socklen_t(cap);
++  std::memcpy(GPtr(val), &v, n);
++  Wr32(len_va, uint32_t(n));
++  return 0;
++}
++
++RECOMP_WS2(21, setsockopt, 5) {
++  int fd = SocketFd(Arg(c, 0));
++  if (fd < 0) return Fail(kWsaENotSock);
++  int hl, kind;
++  int ho = HostOpt(int(Arg(c, 1)), int(Arg(c, 2)), &hl, &kind);
++  gaddr val = Arg(c, 3);
++  uint32_t len = uint32_t(Arg(c, 4));
++  if (ho < 0) return Fail(kWsaENoProtoOpt);
++  if (!val) return Fail(kWsaEInval);
++  if (kind == 1) {
++    if (len < 4) return Fail(kWsaEInval);
++    linger l{};
++    uint8_t b[4];
++    std::memcpy(b, GPtr(val), 4);
++    std::memcpy(&l, b, 4);
++    return ::setsockopt(fd, hl, ho, &l, sizeof l) == 0 ? 0 : FailErrno();
++  }
++  if (kind == 2) {
++    if (len < 4) return Fail(kWsaEInval);
++    uint32_t ms = Rd32(val);
++    timeval tv{};
++    tv.tv_sec = ms / 1000;
++    tv.tv_usec = (ms % 1000) * 1000;
++    return ::setsockopt(fd, hl, ho, &tv, sizeof tv) == 0 ? 0 : FailErrno();
++  }
++  if (len > 64) return Fail(kWsaEInval);
++  uint8_t b[64];
++  std::memcpy(b, GPtr(val), len);
++  return ::setsockopt(fd, hl, ho, b, socklen_t(len)) == 0 ? 0 : FailErrno();
++}
++
++// ---- select and fd sets -----------------------------------------------------
++
++// A Windows fd_set is a count followed by that many SOCKETs; a host fd_set
++// is a bitmap of descriptors, so the two are translated through the handle
++// table.
++struct FdSetMap {
++  std::vector<uint32_t> guest;
++  std::vector<int> host;
++};
++
++bool ReadFdSet(gaddr va, FdSetMap* m) {
++  m->guest.clear();
++  m->host.clear();
++  if (!va) return true;
++  uint32_t n = Rd32(va);
++  if (n > 64) return false;
++  for (uint32_t i = 0; i < n; i++) {
++    uint32_t s = Rd32(va + 4 + 4 * i);
++    int fd = SocketFd(s);
++    if (fd < 0) return false;
++    m->guest.push_back(s);
++    m->host.push_back(fd);
++  }
++  return true;
++}
++
++void MakeHostSet(const FdSetMap& m, fd_set* out, int* max_fd) {
++  FD_ZERO(out);
++  for (int fd : m.host) {
++    FD_SET(fd, out);
++    if (fd + 1 > *max_fd) *max_fd = fd + 1;
++  }
++}
++
++void WriteFdSet(gaddr va, const FdSetMap& m, const fd_set* in) {
++  if (!va) return;
++  uint32_t n = 0;
++  for (size_t i = 0; i < m.host.size(); i++)
++    if (FD_ISSET(m.host[i], in)) Wr32(va + 4 + 4 * n++, m.guest[i]);
++  Wr32(va, n);
++}
++
++RECOMP_WS2(18, select, 5) {
++  FdSetMap r, w, e;
++  if (!ReadFdSet(Arg(c, 1), &r) || !ReadFdSet(Arg(c, 2), &w) ||
++      !ReadFdSet(Arg(c, 3), &e))
++    return Fail(kWsaENotSock);
++  fd_set hr, hw, he;
++  int max_fd = 0;
++  MakeHostSet(r, &hr, &max_fd);
++  MakeHostSet(w, &hw, &max_fd);
++  MakeHostSet(e, &he, &max_fd);
++  timeval tv{};
++  timeval* ptv = nullptr;
++  if (Arg(c, 4)) {
++    tv.tv_sec = int32_t(Rd32(Arg(c, 4)));
++    tv.tv_usec = int32_t(Rd32(Arg(c, 4) + 4));
++    ptv = &tv;
++  }
++  int rc = ::select(max_fd, &hr, &hw, &he, ptv);
++  if (rc < 0) return FailErrno();
++  WriteFdSet(Arg(c, 1), r, &hr);
++  WriteFdSet(Arg(c, 2), w, &hw);
++  WriteFdSet(Arg(c, 3), e, &he);
++  return uint64_t(uint32_t(rc));
++}
++
++// __WSAFDIsSet(s, set): non-zero if the socket is in the set.
++RECOMP_WS2(151, __WSAFDIsSet, 2) {
++  uint32_t s = uint32_t(Arg(c, 0)), va = Arg(c, 1);
++  if (!va) return 0;
++  uint32_t n = Rd32(va);
++  if (n > 64) return 0;
++  for (uint32_t i = 0; i < n; i++)
++    if (Rd32(va + 4 + 4 * i) == s) return 1;
++  return 0;
++}
++
++// ---- name resolution --------------------------------------------------------
++
++// Windows ADDRINFOA (x86 and x64: a 32-bit size_t in the guest): flags,
++// family, socktype, protocol, addrlen, canonname, addr, next.
++constexpr uint32_t kAiFlags = 0, kAiFamily = 4, kAiSocktype = 8, kAiProtocol = 12,
++                   kAiAddrlen = 16, kAiCanonname = 20, kAiAddr = 24, kAiNext = 28,
++                   kAiSize = 32;
++
++int HostAiFamily(uint32_t af) {
++  if (af == kAfInet) return AF_INET;
++  if (af == kAfInet6) return AF_INET6;
++  return AF_UNSPEC;
++}
++
++int HostAiFlags(uint32_t f) {
++  int h = 0;
++  if (f & 0x1) h |= AI_PASSIVE;
++  if (f & 0x2) h |= AI_CANONNAME;
++  if (f & 0x4) h |= AI_NUMERICHOST;
++#ifdef AI_NUMERICSERV
++  if (f & 0x8) h |= AI_NUMERICSERV;
++#endif
++#ifdef AI_ADDRCONFIG
++  if (f & 0x400) h |= AI_ADDRCONFIG;
++#endif
++#ifdef AI_V4MAPPED
++  if (f & 0x800) h |= AI_V4MAPPED;
++#endif
++#ifdef AI_ALL
++  if (f & 0x100) h |= AI_ALL;
++#endif
++  return h;
++}
++
++// getaddrinfo(name, service, hints, &result): the host resolver, then one
++// guest block holding every ADDRINFOA, its sockaddr and its canon name.
++RECOMP_WS2_NAME(getaddrinfo, 4) {
++  std::string node = Arg(c, 0) ? GStr(Arg(c, 0)) : std::string();
++  std::string service = Arg(c, 1) ? GStr(Arg(c, 1)) : std::string();
++  addrinfo hints{};
++  addrinfo* hp = nullptr;
++  if (Arg(c, 2)) {
++    gaddr h = Arg(c, 2);
++    hints.ai_flags = HostAiFlags(Rd32(h + kAiFlags));
++    hints.ai_family = HostAiFamily(Rd32(h + kAiFamily));
++    hints.ai_socktype = int32_t(Rd32(h + kAiSocktype));
++    hints.ai_protocol = int32_t(Rd32(h + kAiProtocol));
++    hp = &hints;
++  }
++  addrinfo* res = nullptr;
++  int rc = ::getaddrinfo(node.empty() ? nullptr : node.c_str(),
++                         service.empty() ? nullptr : service.c_str(), hp, &res);
++  std::string lower;
++  for (char ch : node) lower += char(std::tolower(static_cast<unsigned char>(ch)));
++  const bool activation =
++      (lower == "cloud.rovio.com" || lower == "drm-pc.angrybirdsgame.com") &&
++      (service.empty() || service == "80" || service == "http");
++  if (rc == 0 && activation) {
++    for (addrinfo* a = res; a; a = a->ai_next) {
++      if (a->ai_family != AF_INET || !a->ai_addr) continue;
++      auto* in = reinterpret_cast<sockaddr_in*>(a->ai_addr);
++      in->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
++      in->sin_port = htons(80);
++    }
++  }
++  gaddr out = Arg(c, 3);
++  if (rc != 0) {
++    if (out) Wr32(out, 0);
++    t_wsa_error = rc == EAI_AGAIN      ? kWsaETryAgain
++                  : rc == EAI_MEMORY   ? kWsaENoBufs
++                  : rc == EAI_SYSTEM   ? WsaError(errno)
++                                       : kWsaEHostNotFound;
++    return t_wsa_error;
++  }
++  size_t size = 0;
++  for (addrinfo* a = res; a; a = a->ai_next) {
++    size += kAiSize;
++    if (a->ai_family == AF_INET) size += 16;
++    if (a->ai_family == AF_INET6) size += 28;
++    if (a->ai_canonname) size += std::strlen(a->ai_canonname) + 1;
++  }
++  gaddr block = HeapAllocProcess(size, true);
++  gaddr p = block, prev = 0;
++  for (addrinfo* a = res; a; a = a->ai_next) {
++    gaddr node_va = p;
++    if (prev) Wr32(prev + kAiNext, node_va);
++    p += kAiSize;
++    uint8_t ab[28] = {};
++    uint32_t alen = 0;
++    if (a->ai_family == AF_INET && a->ai_addrlen >= sizeof(sockaddr_in)) {
++      auto* sa = reinterpret_cast<const sockaddr_in*>(a->ai_addr);
++      ab[0] = kAfInet;
++      std::memcpy(ab + 2, &sa->sin_port, 2);
++      std::memcpy(ab + 4, &sa->sin_addr, 4);
++      alen = 16;
++    } else if (a->ai_family == AF_INET6 &&
++               a->ai_addrlen >= sizeof(sockaddr_in6)) {
++      auto* sa = reinterpret_cast<const sockaddr_in6*>(a->ai_addr);
++      ab[0] = kAfInet6;
++      std::memcpy(ab + 2, &sa->sin6_port, 2);
++      std::memcpy(ab + 4, &sa->sin6_flowinfo, 4);
++      std::memcpy(ab + 8, &sa->sin6_addr, 16);
++      std::memcpy(ab + 24, &sa->sin6_scope_id, 4);
++      alen = 28;
++    }
++    gaddr addr_va = 0, name_va = 0;
++    if (alen) {
++      addr_va = p;
++      std::memcpy(GPtr(p), ab, alen);
++      p += alen;
++    }
++    if (a->ai_canonname) {
++      size_t n = std::strlen(a->ai_canonname) + 1;
++      name_va = p;
++      std::memcpy(GPtr(p), a->ai_canonname, n);
++      p += n;
++    }
++    Wr32(node_va + kAiFlags, uint32_t(a->ai_flags));
++    Wr32(node_va + kAiFamily, a->ai_family == AF_INET ? kAfInet
++                             : a->ai_family == AF_INET6 ? kAfInet6 : 0);
++    Wr32(node_va + kAiSocktype, uint32_t(a->ai_socktype));
++    Wr32(node_va + kAiProtocol, uint32_t(a->ai_protocol));
++    Wr32(node_va + kAiAddrlen, alen);
++    Wr32(node_va + kAiCanonname, name_va);
++    Wr32(node_va + kAiAddr, addr_va);
++    prev = node_va;
++  }
++  ::freeaddrinfo(res);
++  if (out) Wr32(out, block);
++  return 0;
++}
++
++RECOMP_WS2_NAME(freeaddrinfo, 1) {
++  if (Arg(c, 0)) HeapFreeProcess(Arg(c, 0));
++  return 0;
++}
++
++// inet_addr / inet_ntoa, as Winsock: a network-order address and a
++// per-thread text buffer.
++RECOMP_WS2(11, inet_addr, 1) {
++  uint32_t a = ::inet_addr(GStr(Arg(c, 0)).c_str());
++  return a;
++}
++
++RECOMP_WS2(12, inet_ntoa, 1) {
++  static thread_local uint32_t buf = 0;
++  if (!buf) buf = HeapAllocProcess(16, true);
++  in_addr a;
++  a.s_addr = uint32_t(Arg(c, 0));
++  PutStr(buf, ::inet_ntoa(a));
++  return buf;
++}
++
+ }  // namespace recomp::hle
+diff --git a/src/runtime/gl/context.cpp b/src/runtime/gl/context.cpp
+index de52772..bce3da5 100644
+--- a/src/runtime/gl/context.cpp
++++ b/src/runtime/gl/context.cpp
+@@ -401,7 +401,7 @@ const char* Context::GetString(Enum name) const {
+   switch (name) {
+     case VENDOR: return "SwARc";
+     case RENDERER: return "gfx::Device";
+-    case VERSION: return "1.1.0";
++    case VERSION: return "1.4.0";
+     case EXTENSIONS:
+       return "GL_ARB_multitexture GL_EXT_texture_env_add "
+              "GL_ARB_texture_env_combine GL_EXT_texture_env_combine "
+@@ -1189,37 +1189,102 @@ BaseFormat BaseOf(Enum internal) {
+   }
+ }
+ 
+-// Converts w x h pixels of `format` (GL_UNSIGNED_BYTE) into A8R8G8B8 as
+-// the base format sees them; false if the format is not handled.
+-bool ToArgb(Enum internal, Enum format, int w, int h, int row_length, int alignment,
+-            const uint8_t* src, std::vector<uint8_t>* out) {
+-  int comps;
+-  switch (format) {
+-    case RGBA: case BGRA_EXT: comps = 4; break;
+-    case RGB: case BGR_EXT: comps = 3; break;
+-    case LUMINANCE_ALPHA: comps = 2; break;
+-    case LUMINANCE: case ALPHA: comps = 1; break;
+-    default: return false;
++bool SupportedPixelType(Enum type) {
++  switch (type) {
++    case UNSIGNED_BYTE:
++    case UNSIGNED_SHORT_4_4_4_4:
++    case UNSIGNED_SHORT_4_4_4_4_REV:
++    case UNSIGNED_SHORT_5_5_5_1:
++    case UNSIGNED_SHORT_1_5_5_5_REV:
++    case UNSIGNED_SHORT_5_6_5:
++    case UNSIGNED_SHORT_5_6_5_REV:
++      return true;
++    default:
++      return false;
++  }
++}
++
++// Converts w x h pixels of `format` + `type` into A8R8G8B8 as the base
++// format sees them; false if the format/type combination is not handled.
++bool ToArgb(Enum internal, Enum format, Enum type, int w, int h, int row_length,
++            int alignment, const uint8_t* src, std::vector<uint8_t>* out) {
++  int bpp = 0;
++  if (type == UNSIGNED_BYTE) {
++    switch (format) {
++      case RGBA: case BGRA_EXT: bpp = 4; break;
++      case RGB: case BGR_EXT: bpp = 3; break;
++      case LUMINANCE_ALPHA: bpp = 2; break;
++      case LUMINANCE: case ALPHA: bpp = 1; break;
++      default: return false;
++    }
++  } else if (type == UNSIGNED_SHORT_5_6_5 || type == UNSIGNED_SHORT_5_6_5_REV) {
++    if (format != RGB && format != BGR_EXT) return false;
++    bpp = 2;
++  } else if (SupportedPixelType(type)) {
++    if (format != RGBA && format != BGRA_EXT) return false;
++    bpp = 2;
++  } else {
++    return false;
+   }
+   int row_pixels = row_length > 0 ? row_length : w;
+-  size_t stride = size_t(row_pixels) * size_t(comps);
++  size_t stride = size_t(row_pixels) * size_t(bpp);
+   stride = (stride + size_t(alignment) - 1) / size_t(alignment) * size_t(alignment);
+   BaseFormat base = BaseOf(internal);
+   bool intensity = internal == INTENSITY || internal == INTENSITY8;
+   out->resize(size_t(w) * size_t(h) * 4);
++  auto exp4 = [](uint16_t v) -> uint8_t { return uint8_t((v << 4) | v); };
++  auto exp5 = [](uint16_t v) -> uint8_t { return uint8_t((v << 3) | (v >> 2)); };
++  auto exp6 = [](uint16_t v) -> uint8_t { return uint8_t((v << 2) | (v >> 4)); };
+   for (int y = 0; y < h; y++) {
+     const uint8_t* s = src + size_t(y) * stride;
+     uint8_t* d = out->data() + size_t(y) * size_t(w) * 4;
+-    for (int x = 0; x < w; x++, s += comps, d += 4) {
++    for (int x = 0; x < w; x++, s += bpp, d += 4) {
+       uint8_t r, g, b, a;
+-      switch (format) {
+-        case RGBA: r = s[0]; g = s[1]; b = s[2]; a = s[3]; break;
+-        case BGRA_EXT: b = s[0]; g = s[1]; r = s[2]; a = s[3]; break;
+-        case RGB: r = s[0]; g = s[1]; b = s[2]; a = 255; break;
+-        case BGR_EXT: b = s[0]; g = s[1]; r = s[2]; a = 255; break;
+-        case LUMINANCE_ALPHA: r = g = b = s[0]; a = s[1]; break;
+-        case LUMINANCE: r = g = b = s[0]; a = 255; break;
+-        default: r = g = b = 0; a = s[0]; break;  // ALPHA
++      if (type == UNSIGNED_BYTE) {
++        switch (format) {
++          case RGBA: r = s[0]; g = s[1]; b = s[2]; a = s[3]; break;
++          case BGRA_EXT: b = s[0]; g = s[1]; r = s[2]; a = s[3]; break;
++          case RGB: r = s[0]; g = s[1]; b = s[2]; a = 255; break;
++          case BGR_EXT: b = s[0]; g = s[1]; r = s[2]; a = 255; break;
++          case LUMINANCE_ALPHA: r = g = b = s[0]; a = s[1]; break;
++          case LUMINANCE: r = g = b = s[0]; a = 255; break;
++          default: r = g = b = 0; a = s[0]; break;  // ALPHA
++        }
++      } else {
++        uint16_t p = uint16_t(s[0]) | (uint16_t(s[1]) << 8);
++        bool bgr = (format == BGR_EXT || format == BGRA_EXT);
++        switch (type) {
++          case UNSIGNED_SHORT_4_4_4_4:
++            r = exp4((p >> 12) & 0xF); g = exp4((p >> 8) & 0xF);
++            b = exp4((p >> 4) & 0xF);  a = exp4(p & 0xF);
++            if (bgr) std::swap(r, b);
++            break;
++          case UNSIGNED_SHORT_4_4_4_4_REV:
++            a = exp4((p >> 12) & 0xF); b = exp4((p >> 8) & 0xF);
++            g = exp4((p >> 4) & 0xF);  r = exp4(p & 0xF);
++            if (bgr) std::swap(r, b);
++            break;
++          case UNSIGNED_SHORT_5_5_5_1:
++            r = exp5((p >> 11) & 0x1F); g = exp5((p >> 6) & 0x1F);
++            b = exp5((p >> 1) & 0x1F);  a = (p & 1) ? 255 : 0;
++            if (bgr) std::swap(r, b);
++            break;
++          case UNSIGNED_SHORT_1_5_5_5_REV:
++            a = (p & 0x8000) ? 255 : 0; b = exp5((p >> 10) & 0x1F);
++            g = exp5((p >> 5) & 0x1F);  r = exp5(p & 0x1F);
++            if (bgr) std::swap(r, b);
++            break;
++          case UNSIGNED_SHORT_5_6_5:
++            r = exp5((p >> 11) & 0x1F); g = exp6((p >> 5) & 0x3F);
++            b = exp5(p & 0x1F);         a = 255;
++            if (bgr) std::swap(r, b);
++            break;
++          default:  // UNSIGNED_SHORT_5_6_5_REV
++            b = exp5((p >> 11) & 0x1F); g = exp6((p >> 5) & 0x3F);
++            r = exp5(p & 0x1F);         a = 255;
++            if (bgr) std::swap(r, b);
++            break;
++        }
+       }
+       // What the internal (base) format keeps of it.
+       if (intensity) {
+@@ -1248,7 +1313,7 @@ void Context::TexImage2D(Enum target, int level, Enum internal, int w, int h, in
+   Changed();
+   if (target != TEXTURE_2D) return Unsupported("glTexImage2D target", target);
+   if (border) return Unsupported("glTexImage2D border", Enum(border));
+-  if (type != UNSIGNED_BYTE) return Unsupported("glTexImage2D type", type);
++  if (!SupportedPixelType(type)) return Unsupported("glTexImage2D type", type);
+   BaseFormat base = BaseOf(internal);
+   if (!base.ok) return Unsupported("glTexImage2D internal format", internal);
+   if (level < 0 || w < 0 || h < 0) return Error(INVALID_VALUE, "glTexImage2D level size");
+@@ -1273,7 +1338,7 @@ void Context::TexImage2D(Enum target, int level, Enum internal, int w, int h, in
+   t->defined[size_t(level)] = true;
+   if (!pixels) return;
+   std::vector<uint8_t> argb;
+-  if (!ToArgb(internal, format, w, h, unpack_row_length_, unpack_alignment_,
++  if (!ToArgb(internal, format, type, w, h, unpack_row_length_, unpack_alignment_,
+               static_cast<const uint8_t*>(pixels), &argb))
+     return Unsupported("glTexImage2D format", format);
+   dev_->UpdateTexture(t->id, level, {0, 0, w, h}, argb.data(), uint32_t(w) * 4);
+@@ -1283,7 +1348,7 @@ void Context::TexSubImage2D(Enum target, int level, int x, int y, int w, int h,
+                             Enum format, Enum type, const void* pixels) {
+   Changed();
+   if (target != TEXTURE_2D) return Unsupported("glTexSubImage2D target", target);
+-  if (type != UNSIGNED_BYTE) return Unsupported("glTexSubImage2D type", type);
++  if (!SupportedPixelType(type)) return Unsupported("glTexSubImage2D type", type);
+   if (level < 0 || w < 0 || h < 0) return Error(INVALID_VALUE, "glTexSubImage2D level size");
+   Texture* t = Bound(active_unit_);
+   if (!t->id || t->compressed || level >= t->levels || !t->defined[size_t(level)])
+@@ -1293,12 +1358,40 @@ void Context::TexSubImage2D(Enum target, int level, int x, int y, int w, int h,
+   // The base format of the existing image decides what is kept.
+   Enum internal = t->has_color ? (t->has_alpha ? RGBA : RGB) : ALPHA;
+   std::vector<uint8_t> argb;
+-  if (!ToArgb(internal, format, w, h, unpack_row_length_, unpack_alignment_,
++  if (!ToArgb(internal, format, type, w, h, unpack_row_length_, unpack_alignment_,
+               static_cast<const uint8_t*>(pixels), &argb))
+     return Unsupported("glTexSubImage2D format", format);
+   dev_->UpdateTexture(t->id, level, {x, y, x + w, y + h}, argb.data(), uint32_t(w) * 4);
+ }
+ 
++void Context::CopyTexImage2D(Enum target, int level, Enum internal, int x, int y, int w,
++                             int h, int border) {
++  if (w < 0 || h < 0) return Error(INVALID_VALUE, "glCopyTexImage2D size");
++  if (!w || !h) return;
++  Changed();
++  // The framebuffer's lower-left pixel becomes the texture's first row, so
++  // ReadPixels' bottom-up output is exactly what TexImage2D wants.
++  int saved = pack_alignment_;
++  pack_alignment_ = 1;
++  std::vector<uint8_t> px(size_t(w) * size_t(h) * 4);
++  ReadPixels(x, y, w, h, RGBA, UNSIGNED_BYTE, px.data());
++  pack_alignment_ = saved;
++  TexImage2D(target, level, internal, w, h, border, RGBA, UNSIGNED_BYTE, px.data());
++}
++
++void Context::CopyTexSubImage2D(Enum target, int level, int xoffset, int yoffset, int x,
++                                int y, int w, int h) {
++  if (w < 0 || h < 0) return Error(INVALID_VALUE, "glCopyTexSubImage2D size");
++  if (!w || !h) return;
++  Changed();
++  int saved = pack_alignment_;
++  pack_alignment_ = 1;
++  std::vector<uint8_t> px(size_t(w) * size_t(h) * 4);
++  ReadPixels(x, y, w, h, RGBA, UNSIGNED_BYTE, px.data());
++  pack_alignment_ = saved;
++  TexSubImage2D(target, level, xoffset, yoffset, w, h, RGBA, UNSIGNED_BYTE, px.data());
++}
++
+ void Context::CompressedTexImage2D(Enum target, int level, Enum internal, int w, int h,
+                                    int border, int size, const void* data) {
+   Changed();
+diff --git a/src/runtime/gl/context.h b/src/runtime/gl/context.h
+index a227905..35a05d1 100644
+--- a/src/runtime/gl/context.h
++++ b/src/runtime/gl/context.h
+@@ -58,6 +58,9 @@ enum : Enum {
+   // types
+   BYTE = 0x1400, UNSIGNED_BYTE = 0x1401, SHORT = 0x1402, UNSIGNED_SHORT = 0x1403,
+   INT = 0x1404, UNSIGNED_INT = 0x1405, FLOAT = 0x1406, DOUBLE = 0x140A,
++  UNSIGNED_SHORT_4_4_4_4 = 0x8033, UNSIGNED_SHORT_5_5_5_1 = 0x8034,
++  UNSIGNED_SHORT_5_6_5 = 0x8363, UNSIGNED_SHORT_5_6_5_REV = 0x8364,
++  UNSIGNED_SHORT_4_4_4_4_REV = 0x8365, UNSIGNED_SHORT_1_5_5_5_REV = 0x8366,
+   // pixel formats
+   ALPHA = 0x1906, RGB = 0x1907, RGBA = 0x1908, LUMINANCE = 0x1909,
+   LUMINANCE_ALPHA = 0x190A, BGR_EXT = 0x80E0, BGRA_EXT = 0x80E1,
+@@ -191,6 +194,10 @@ class Context {
+                   int border, Enum format, Enum type, const void* pixels);
+   void TexSubImage2D(Enum target, int level, int x, int y, int w, int h,
+                      Enum format, Enum type, const void* pixels);
++  void CopyTexImage2D(Enum target, int level, Enum internal_format, int x, int y,
++                      int w, int h, int border);
++  void CopyTexSubImage2D(Enum target, int level, int xoffset, int yoffset, int x,
++                         int y, int w, int h);
+   void CompressedTexImage2D(Enum target, int level, Enum internal_format,
+                             int w, int h, int border, int size, const void* data);
+   void TexEnv(Enum target, Enum pname, const float* v);
+diff --git a/src/runtime/log.cpp b/src/runtime/log.cpp
+index ebc39d2..1af55ba 100644
+--- a/src/runtime/log.cpp
++++ b/src/runtime/log.cpp
+@@ -6,12 +6,24 @@
+ #include <cstdarg>
+ #include <cstdio>
+ #include <cstdlib>
++#include <ctime>
+ 
+ namespace recomp {
+ 
+ bool g_trace = false;
+ void (*g_fatal_report)(const char* msg) = nullptr;
+ 
++namespace {
++
++// Milliseconds since the first trace line: makes a stall in the log visible.
++double NowMs() {
++  timespec ts{};
++  clock_gettime(CLOCK_MONOTONIC, &ts);
++  return double(ts.tv_sec) * 1000.0 + double(ts.tv_nsec) / 1e6;
++}
++
++}  // namespace
++
+ void FatalF(const char* fmt, ...) {
+   char msg[2048];
+   va_list ap;
+@@ -33,6 +45,8 @@ void WarnF(const char* fmt, ...) {
+ }
+ 
+ void TraceF(const char* fmt, ...) {
++  static const double start = NowMs();
++  std::fprintf(stderr, "[%9.1f] ", NowMs() - start);
+   va_list ap;
+   va_start(ap, fmt);
+   std::vfprintf(stderr, fmt, ap);
+diff --git a/src/x86/dispatch.cpp b/src/x86/dispatch.cpp
+index 1ffda28..0c07786 100644
+--- a/src/x86/dispatch.cpp
++++ b/src/x86/dispatch.cpp
+@@ -288,6 +288,38 @@ void FaultHandler(int sig, siginfo_t* si, void* uc) {
+   void* frames[48];
+   int nf = backtrace(frames, 48);
+   backtrace_symbols_fd(frames, nf, 2);
++  // The guest state names the lifted function that faulted and its locals;
++  // hle depth > 0 means a handler touched a bad guest pointer.
++  if (const Thread* t = CurrentThread()) {
++    const Ctx& c = t->ctx;
++    n = std::snprintf(buf, sizeof buf,
++                      "  guest eax %08X ebx %08X ecx %08X edx %08X\n"
++                      "  esp %08X ebp %08X esi %08X edi %08X hle depth %d\n",
++                      c.eax, c.ebx, c.ecx, c.edx, c.esp, c.ebp, c.esi, c.edi,
++                      hle::t_hle_depth);
++    (void)!write(2, buf, size_t(n));
++    if (g_proc) {
++      uint32_t ebp = c.ebp;
++      for (int i = 0; i < 16; i++) {
++        if (!g_proc->mem.IsCommitted(ebp) || !g_proc->mem.IsCommitted(ebp + 4))
++          break;
++        n = std::snprintf(buf, sizeof buf, "  #%d ret %08X frame %08X\n", i,
++                          Rd32(ebp + 4), ebp);
++        (void)!write(2, buf, size_t(n));
++        uint32_t next = Rd32(ebp);
++        if (next <= ebp) break;
++        ebp = next;
++      }
++      n = std::snprintf(buf, sizeof buf, "  stack top:");
++      (void)!write(2, buf, size_t(n));
++      for (int i = 0; i < 8; i++) {
++        if (!g_proc->mem.IsCommitted(c.esp + 4 * i)) break;
++        n = std::snprintf(buf, sizeof buf, " %08X", Rd32(c.esp + 4 * i));
++        (void)!write(2, buf, size_t(n));
++      }
++      (void)!write(2, "\n", 1);
++    }
++  }
+   _exit(4);
+ }
+ }  // namespace
+diff --git a/src/x86/process.cpp b/src/x86/process.cpp
+index ca8677e..817d267 100644
+--- a/src/x86/process.cpp
++++ b/src/x86/process.cpp
+@@ -264,6 +264,16 @@ static uint32_t RunGuestThread(Thread* t, const std::function<uint64_t(Ctx&)>& b
+     r = uint32_t(body(t->ctx));
+   } catch (const GuestThreadExit& e) {
+     r = e.code;
++  } catch (const GuestResume& res) {
++    // The guest abandoned its call chain, but no lifted function on this
++    // thread owns the frame: the continuation is not lifted (its function
++    // has to be a manifest entry) or the lifter saw no SEH registration
++    // in the function that owns it.
++    FatalF("guest resume to %08llX from %08llX (frame ebp %08llX): no lifted "
++           "function on this thread owns that frame (make the continuation "
++           "an entry)",
++           (unsigned long long)res.target, (unsigned long long)res.from,
++           (unsigned long long)res.ebp);
+   }
+   if (g_proc->thread_exit) g_proc->thread_exit(t, r);
+   // Its guest stack goes back, as Windows and FreeBSD free a finished
+diff --git a/tools/ghidra/ExportJumpTables.java b/tools/ghidra/ExportJumpTables.java
+index c5d6207..6922efe 100644
+--- a/tools/ghidra/ExportJumpTables.java
++++ b/tools/ghidra/ExportJumpTables.java
+@@ -4,6 +4,13 @@
+ // are listed with no targets; the lifter skips them (they are IAT thunks
+ // and tail jumps).
+ //
++// Ghidra's switch analysis sometimes reports only part of a table's entries
++// (a case reached only through the table is then left unlifted). So when a
++// computed jump references a table in its own executable block, the pointer
++// array is read here as well, up to the first entry that does not point into
++// that block. That is the MSVC layout: the table holds 4-byte targets and is
++// terminated by padding.
++//
+ // Headless:
+ //   bash /usr/share/ghidra/support/analyzeHeadless <projdir> <project> \
+ //     -process <game.exe> -noanalysis -readOnly \
+@@ -14,17 +21,34 @@ import java.io.PrintWriter;
+ import java.util.TreeSet;
+ 
+ import ghidra.app.script.GhidraScript;
++import ghidra.program.model.address.Address;
+ import ghidra.program.model.listing.Instruction;
+ import ghidra.program.model.listing.InstructionIterator;
++import ghidra.program.model.mem.Memory;
++import ghidra.program.model.mem.MemoryBlock;
+ import ghidra.program.model.symbol.FlowType;
+ import ghidra.program.model.symbol.Reference;
+ 
+ public class ExportJumpTables extends GhidraScript {
++  private int ptrSize;
++
++  private boolean validTarget(Memory mem, MemoryBlock b, Address e) throws Exception {
++    if (!b.contains(e) || !b.isInitialized()) return false;
++    long v = ptrSize == 8 ? mem.getLong(e) : (mem.getInt(e) & 0xffffffffL);
++    return b.contains(toAddr(v));
++  }
++
++  private long readTarget(Memory mem, Address e) throws Exception {
++    return ptrSize == 8 ? mem.getLong(e) : (mem.getInt(e) & 0xffffffffL);
++  }
++
+   @Override
+   protected void run() throws Exception {
+     String[] args = getScriptArgs();
+     String out = args.length > 0 ? args[0] : "jumptables.tsv";
+-    int resolved = 0, unresolved = 0;
++    int resolved = 0, unresolved = 0, scanned = 0;
++    Memory mem = currentProgram.getMemory();
++    ptrSize = currentProgram.getDefaultPointerSize();
+     try (PrintWriter w = new PrintWriter(out)) {
+       w.println("jmp\ttargets");
+       InstructionIterator it = currentProgram.getListing().getInstructions(true);
+@@ -33,9 +57,33 @@ public class ExportJumpTables extends GhidraScript {
+         FlowType ft = insn.getFlowType();
+         if (!ft.isJump() || !ft.isComputed()) continue;
+         TreeSet<Long> targets = new TreeSet<>();
++        Long table = null;
+         for (Reference r : insn.getReferencesFrom()) {
+-          if (r.getReferenceType().isJump() && r.getToAddress().isMemoryAddress())
++          if (!r.getToAddress().isMemoryAddress()) continue;
++          if (r.getReferenceType().isJump())
+             targets.add(r.getToAddress().getOffset());
++          else
++            table = r.getToAddress().getOffset();
++        }
++        // Read the pointer table itself, in the same executable block. Ghidra
++        // points at the element it matched (not necessarily the first one), so
++        // the run of valid entries around it is taken.
++        MemoryBlock here = mem.getBlock(insn.getAddress());
++        if (table != null && here != null && here.isExecute() && here.contains(toAddr(table))) {
++          long step = ptrSize;
++          Address start = toAddr(table);
++          for (int i = 0; i < 4096; i++) {
++            Address e = start.subtract(step);
++            if (!validTarget(mem, here, e)) break;
++            start = e;
++          }
++          boolean any = false;
++          for (Address e = start; ; e = e.add(step)) {
++            if (!validTarget(mem, here, e)) break;
++            targets.add(readTarget(mem, e));
++            any = true;
++          }
++          if (any) scanned++;
+         }
+         StringBuilder sb = new StringBuilder();
+         for (Long t : targets) {
+@@ -47,6 +95,6 @@ public class ExportJumpTables extends GhidraScript {
+       }
+     }
+     println("ExportJumpTables: " + resolved + " resolved, " + unresolved +
+-        " unresolved -> " + out);
++        " unresolved (" + scanned + " tables scanned) -> " + out);
+   }
+ }
+diff --git a/tools/lifter_x86/emit.cpp b/tools/lifter_x86/emit.cpp
+index 386100c..3d595d2 100644
+--- a/tools/lifter_x86/emit.cpp
++++ b/tools/lifter_x86/emit.cpp
+@@ -3726,15 +3726,52 @@ void Emitter::EmitFunction(const Function& f, std::string* out,
+       }
+     }
+   }
+-  if (resumable)
++  if (resumable) {
++    // 32-bit: a function that owns a resume site threw it with ebp already
++    // replaced by the frame being resumed (_JumpToContinuation), so it must
++    // not catch its own throw unless the target is its own code (longjmp
++    // back into the function that called setjmp).
++    std::string cond = "    if (r.ebp != ebp";
++    if (!p_.x64) {
++      std::vector<uint64_t> sites;
++      uint64_t lo = 0, hi = 0;
++      for (const auto& [va, in] : f.insns) {
++        if (!in.ok) continue;
++        if (!lo) lo = va;
++        hi = in.next();
++        if (p_.resume_sites.count(va) ||
++            (in.d.mnemonic == ZYDIS_MNEMONIC_RET && p_.longjmps.count(f.entry)))
++          sites.push_back(va);
++      }
++      auto exact = p_.func_ends.find(f.entry);
++      if (exact != p_.func_ends.end()) {
++        lo = std::min(lo, f.entry), hi = std::max(hi, exact->second);
++      } else {
++        for (const auto& [e, end] : p_.func_ends)
++          if (e < f.entry && f.entry < end) {
++            lo = std::min(lo, e), hi = std::max(hi, end);
++            break;
++          }
++      }
++      if (!sites.empty() && hi > lo) {
++        cond += " || ((";
++        for (size_t i = 0; i < sites.size(); i++)
++          cond += Fmt(i ? " || r.from == %s" : "r.from == %s", Hex(sites[i]).c_str());
++        cond += Fmt(") && (r.target < %s || r.target >= %s))",
++                    Hex(lo).c_str(), Hex(hi).c_str());
++      }
++    }
++    cond += ") throw;  // another activation's frame\n";
+     o += std::string("  } catch (const ::recomp::GuestResume& r) {\n") +
+-         (!p_.x64 ? "    if (r.ebp != ebp) throw;  // another activation's frame\n"
+-          : eh == p_.eh_frames.end() ? "    if (r.ebp != SJ) throw;  // another activation's frame\n"
+-          : sj ? "    if (r.ebp != EF && r.ebp != SJ) throw;  // another activation's frame\n"
+-               : "    if (r.ebp != EF) throw;  // another activation's frame\n") +
++         (p_.x64 ? (eh == p_.eh_frames.end()
++                        ? "    if (r.ebp != SJ) throw;  // another activation's frame\n"
++                        : sj ? "    if (r.ebp != EF && r.ebp != SJ) throw;  // another activation's frame\n"
++                             : "    if (r.ebp != EF) throw;  // another activation's frame\n")
++                : cond) +
+          "    ::recomp::Resume(c, r);\n"
+          "    return;\n"
+          "  }\n";
++  }
+   o += "}\n\n";
+ }
+ 
+diff --git a/tools/lifter_x86/program.cpp b/tools/lifter_x86/program.cpp
+index da0b8dc..a9a6b97 100644
+--- a/tools/lifter_x86/program.cpp
++++ b/tools/lifter_x86/program.cpp
+@@ -102,6 +102,7 @@ bool Program::Load(const std::string& path, const std::string& symdir,
+         uint64_t entry = Hex(c[0]) + delta;
+         if (!in_text(entry)) return;
+         entries.insert(entry);
++        if (c.size() > 2) func_ends[entry] = Hex(c[2]) + delta;
+         if (c.size() > 5 && c[5] == "1") noreturn.insert(entry);
+         if (c.size() > 7 && c[7].rfind("FUN_", 0) != 0) names[entry] = c[7];
+       }, err))
+diff --git a/tools/lifter_x86/program.h b/tools/lifter_x86/program.h
+index 8690230..6f6f81e 100644
+--- a/tools/lifter_x86/program.h
++++ b/tools/lifter_x86/program.h
+@@ -72,6 +72,10 @@ struct Program {
+   // (a tail call) rather than continuing inline.
+   bool Splits(uint64_t t) const { return entries.count(t) && !weak.count(t); }
+   std::map<uint64_t, std::string> names;      // demangled or Ghidra names
++  // Ghidra's function extents (entry -> end). A chunk split off at an extra
++  // entry still lies inside its parent's, which tells a resumed frame which
++  // continuations are its own.
++  std::map<uint64_t, uint64_t> func_ends;
+   std::set<uint64_t> noreturn;                // functions that never return
+   std::map<uint64_t, std::vector<uint64_t>> jumptables;  // jmp va -> targets
+   std::set<uint64_t> noreturn_iat;            // import slots of ExitProcess etc.

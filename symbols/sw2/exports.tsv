@@ -1,0 +1,3 @@
+va	kind	mangled	demangled
+00593710	func	??0_Mutex@std@@QAE@W4_Uninitialized@1@@Z	public: __thiscall std::_Mutex::_Mutex(enum std::_Uninitialized)
+00593710	func	??4_Init_locks@std@@QAEAAV01@ABV01@@Z	public: class std::_Init_locks & __thiscall std::_Init_locks::operator=(class std::_Init_locks const &)

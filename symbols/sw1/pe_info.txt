@@ -1,0 +1,36 @@
+image_base 0x00400000  image_size 0x22c000  entry 0x00543bb9  timestamp 0x52b4290c
+relocations: yes
+sections:
+  .text    va 0x00401000 vsize  0x1673da raw  0x167400 chars 0x60000020
+  .rdata   va 0x00569000 vsize   0x3a8f2 raw   0x3aa00 chars 0x40000040
+  .data    va 0x005a4000 vsize   0x1dee0 raw    0x5800 chars 0xc0000040
+  .rsrc    va 0x005c2000 vsize   0x4a4f8 raw   0x4a600 chars 0x40000040
+  .reloc   va 0x0060d000 vsize   0x1eede raw   0x1f000 chars 0x42000040
+imports per dll:
+  KERNEL32.dll   66
+  USER32.dll     46
+  WINHTTP.dll    4
+  WS2_32.dll     26
+  WLDAP32.dll    16
+  ADVAPI32.dll   9
+  DSOUND.dll     1
+  MSVCP100.dll   39
+  MSVCR100.dll   160
+  gdiplus.dll    31
+  IPHLPAPI.DLL   1
+  SHELL32.dll    2
+  WINMM.dll      3
+  RPCRT4.dll     3
+exports: 2 func=2
+rich header (prodid build count):
+  152 20115 11
+  158 40219 11
+  156 40219 4
+  171 30319 1
+  170 40219 158
+  147 30729 27
+    1     0 442
+  171 40219 284
+  155 40219 1
+  154 40219 1
+  157 40219 1

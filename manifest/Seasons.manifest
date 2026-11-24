@@ -1,0 +1,14 @@
+# recomp_lift manifest for Angry Birds Seasons (PC).
+
+# libmpg123 (statically linked): native replacement, addresses from
+# the shared signature (feed = init + 0x440).
+
+replace 004E5550 mpg123_init
+replace 004E5E00 mpg123_new
+replace 004E5DA0 mpg123_delete
+replace 004E5E20 mpg123_open_feed
+replace 004E5990 mpg123_feed
+replace 004E59E0 mpg123_decode
+replace 004E5B00 mpg123_getformat
+replace 004E5B60 mpg123_tell
+replace 004E5C10 mpg123_feedseek

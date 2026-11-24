@@ -1,0 +1,13 @@
+# recomp_lift manifest for AngryBirdsStarWarsII.exe
+
+# libmpg123 (statically linked): same native replacement as the first game;
+# SW2's functions are SW1's + 0x10180. Native code in src/mpg123_hle.cpp.
+replace 00516940 mpg123_init
+replace 005171F0 mpg123_new
+replace 00517190 mpg123_delete
+replace 00517210 mpg123_open_feed
+replace 00516D80 mpg123_feed
+replace 00516DD0 mpg123_decode
+replace 00516EF0 mpg123_getformat
+replace 00516F50 mpg123_tell
+replace 00517000 mpg123_feedseek
