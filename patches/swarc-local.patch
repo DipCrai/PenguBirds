@@ -2633,7 +2633,7 @@ index ebc39d2..1af55ba 100644
    va_start(ap, fmt);
    std::vfprintf(stderr, fmt, ap);
 diff --git a/src/x86/dispatch.cpp b/src/x86/dispatch.cpp
-index 1ffda28..0c07786 100644
+index 1ffda28..d730f9d 100644
 --- a/src/x86/dispatch.cpp
 +++ b/src/x86/dispatch.cpp
 @@ -288,6 +288,38 @@ void FaultHandler(int sig, siginfo_t* si, void* uc) {
@@ -2675,6 +2675,54 @@ index 1ffda28..0c07786 100644
    _exit(4);
  }
  }  // namespace
+@@ -381,6 +413,15 @@ void Dispatch(Ctx& c, uint64_t target, uint64_t va) {
+          (unsigned long long)target, (unsigned long long)va);
+ }
+ 
++static void RestoreSehReturn(Ctx& c, const GuestReturn& r) {
++  c.eax = r.eax;
++  c.ebx = r.ebx;
++  c.esi = r.esi;
++  c.edi = r.edi;
++  c.esp = r.esp;
++  c.ebp = r.ebp;
++}
++
+ void Dispatch(Ctx& c, uint32_t target, uint32_t va) {
+   const CodeRange* r = &g_exe;
+   if (target - r->lo >= r->size) {
+@@ -394,7 +435,11 @@ void Dispatch(Ctx& c, uint32_t target, uint32_t va) {
+     if (!r) FatalF("indirect branch to %08X from %08X: not code", target, va);
+   }
+   if (GuestFn fn = r->table[target - r->lo]) {
+-    fn(c);
++    try {
++      fn(c);
++    } catch (const GuestReturn& ret) {
++      RestoreSehReturn(c, ret);
++    }
+     return;
+   }
+   FatalF("indirect branch to unlifted address %08X from %08X "
+diff --git a/src/x86/lifted.h b/src/x86/lifted.h
+index af4eba7..ff5357c 100644
+--- a/src/x86/lifted.h
++++ b/src/x86/lifted.h
+@@ -40,6 +40,14 @@ struct GuestResume {
+   uint64_t target, ebp, from;
+ };
+ 
++// Thrown by the native __SEH_epilog4 replacement when an SEH handler
++// finishes: the CRT function that registered the frame returns to its own
++// caller, not to the host call site. The call site that called that
++// function catches this and continues as after a normal return.
++struct GuestReturn {
++  uint32_t target, esp, ebp, ebx, esi, edi, eax;
++};
++
+ // Runtime services called from lifted code (x86/dispatch.cpp).
+ // `va` is always the guest address of the instruction doing the call, for
+ // diagnostics. Code lifted from x64 images (RECOMP_LIFT_X64) sees the
 diff --git a/src/x86/process.cpp b/src/x86/process.cpp
 index ca8677e..817d267 100644
 --- a/src/x86/process.cpp
@@ -2794,10 +2842,28 @@ index c5d6207..6922efe 100644
    }
  }
 diff --git a/tools/lifter_x86/emit.cpp b/tools/lifter_x86/emit.cpp
-index 386100c..3d595d2 100644
+index 386100c..43f4918 100644
 --- a/tools/lifter_x86/emit.cpp
 +++ b/tools/lifter_x86/emit.cpp
-@@ -3726,15 +3726,52 @@ void Emitter::EmitFunction(const Function& f, std::string* out,
+@@ -3262,7 +3262,16 @@ void InsnEmitter::Emit() {
+           return;
+         }
+         refs_.insert(t);
+-        L(Fmt("LIFT_SPILL; %s(c); LIFT_RELOAD;", FnName(t).c_str()));
++        if (p_.seh_callers.count(t)) {
++          L("try {");
++          L(Fmt("  LIFT_SPILL; %s(c); LIFT_RELOAD;", FnName(t).c_str()));
++          L("} catch (const ::recomp::GuestReturn& r) {");
++          L("  eax = r.eax; ebx = r.ebx; esi = r.esi; edi = r.edi;");
++          L("  esp = r.esp; ebp = r.ebp;");
++          L("}");
++        } else {
++          L(Fmt("LIFT_SPILL; %s(c); LIFT_RELOAD;", FnName(t).c_str()));
++        }
+       } else {
+         if (!PrepareMem()) return Unimpl();
+         L("const uint32_t t = " + Read(0) + ";");
+@@ -3726,15 +3735,52 @@ void Emitter::EmitFunction(const Function& f, std::string* out,
        }
      }
    }
@@ -2855,8 +2921,27 @@ index 386100c..3d595d2 100644
    o += "}\n\n";
  }
  
+diff --git a/tools/lifter_x86/main.cpp b/tools/lifter_x86/main.cpp
+index cc38805..2d03cec 100644
+--- a/tools/lifter_x86/main.cpp
++++ b/tools/lifter_x86/main.cpp
+@@ -274,6 +274,14 @@ int main(int argc, char** argv) {
+         lifter::BuildFunction(p, dec, e, &f);
+       }
+     }
++    // A function that registers an SEH frame returns through the CRT
++    // epilog's GuestReturn. Calls to it are emitted with a catch; record
++    // it before any function is emitted so call sites know.
++    for (uint64_t t : f.direct_calls)
++      if (p.seh_prologs.count(t)) {
++        p.seh_callers.insert(e);
++        break;
++      }
+     for (const auto* s : {&f.direct_calls, &f.tail_calls, &f.setjmp_returns})
+       for (uint64_t t : *s) {
+         if (!p.InText(t)) continue;
 diff --git a/tools/lifter_x86/program.cpp b/tools/lifter_x86/program.cpp
-index da0b8dc..a9a6b97 100644
+index da0b8dc..8ec6928 100644
 --- a/tools/lifter_x86/program.cpp
 +++ b/tools/lifter_x86/program.cpp
 @@ -102,6 +102,7 @@ bool Program::Load(const std::string& path, const std::string& symdir,
@@ -2867,8 +2952,18 @@ index da0b8dc..a9a6b97 100644
          if (c.size() > 5 && c[5] == "1") noreturn.insert(entry);
          if (c.size() > 7 && c[7].rfind("FUN_", 0) != 0) names[entry] = c[7];
        }, err))
+@@ -160,6 +161,9 @@ bool Program::LoadManifest(const std::string& path, std::string* err) {
+       entries.insert(va);
+       setjmps.insert(va);
+       if (!name.empty()) names[va] = name;
++    } else if (kind == "seh_prolog") {
++      entries.insert(va);
++      seh_prologs.insert(va);
+     } else if (kind == "probe") {
+       entries.insert(va);
+       probes[va] = name.empty() ? "probe" : name;
 diff --git a/tools/lifter_x86/program.h b/tools/lifter_x86/program.h
-index 8690230..6f6f81e 100644
+index 8690230..2994d2b 100644
 --- a/tools/lifter_x86/program.h
 +++ b/tools/lifter_x86/program.h
 @@ -72,6 +72,10 @@ struct Program {
@@ -2882,3 +2977,15 @@ index 8690230..6f6f81e 100644
    std::set<uint64_t> noreturn;                // functions that never return
    std::map<uint64_t, std::vector<uint64_t>> jumptables;  // jmp va -> targets
    std::set<uint64_t> noreturn_iat;            // import slots of ExitProcess etc.
+@@ -94,6 +98,11 @@ struct Program {
+   std::set<uint64_t> resume_sites;            // manifest: calls/jmps that
+                                               // abandon the stack (SEH,
+                                               // longjmp)
++  std::set<uint64_t> seh_prologs;             // manifest: __SEH_prolog4
++                                              // helpers
++  std::set<uint64_t> seh_callers;             // functions that call one;
++                                              // calls to them catch
++                                              // GuestReturn
+   std::set<uint64_t> setjmps;                 // manifest or reader: setjmp
+                                               // (their callers can be
+                                               // resumed by longjmp)
