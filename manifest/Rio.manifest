@@ -12,9 +12,3 @@ replace 004D60C0 mpg123_decode
 replace 004D61E0 mpg123_getformat
 replace 004D6240 mpg123_tell
 replace 004D62F0 mpg123_feedseek
-
-# Rio's old activator only enables its button for XXXX-XXXX-XXXX-XXXX.
-# The legacy server accepted any key; this native replacement keeps that
-# behaviour for the user's own copy (the endpoint itself is answered by
-# the runtime's in-process DRM responder).
-replace 004BB3B0 rio_key_ok

@@ -66,7 +66,7 @@ endif()
 recomp_add_lifted(abrio_lifted "${CMAKE_CURRENT_SOURCE_DIR}/generated_rio")
 if(TARGET abrio_lifted)
   add_executable(abrio src/main_rio.cpp src/hle_ext.cpp
-                 src/seh_native.cpp src/mpg123_hle.cpp src/rio_key.cpp $<TARGET_OBJECTS:abrio_lifted>)
+                 src/seh_native.cpp src/mpg123_hle.cpp $<TARGET_OBJECTS:abrio_lifted>)
   target_link_libraries(abrio PRIVATE recomp_win32 recomp_opengl recomp_dsound recomp_xinput mpg123)
   target_compile_definitions(abrio PRIVATE AB_GAME_RIO)
   if(NOT APPLE)

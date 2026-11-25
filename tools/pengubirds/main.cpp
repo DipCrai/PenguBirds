@@ -435,10 +435,6 @@ bool BuildNativeKit(const Part& p, const fs::path& game,
                  err))
     return false;
 
-  std::string extra =
-      (p.id == "abrio")
-          ? "\n  " + CmakeQuote((payload / "src/rio_key.cpp").string())
-          : "";
   std::ostringstream cm;
   cm << "cmake_minimum_required(VERSION 3.25)\n"
      << "project(abgame CXX)\n"
@@ -451,7 +447,7 @@ bool BuildNativeKit(const Part& p, const fs::path& game,
      << "  " << CmakeQuote((payload / "src" / MainSource(p.id)).string()) << "\n"
      << "  " << CmakeQuote((payload / "src/hle_ext.cpp").string()) << "\n"
      << "  " << CmakeQuote((payload / "src/mpg123_hle.cpp").string()) << "\n"
-     << "  " << CmakeQuote((payload / "src/seh_native.cpp").string()) << extra << ")\n"
+     << "  " << CmakeQuote((payload / "src/seh_native.cpp").string()) << ")\n"
      << "target_include_directories(abgame PRIVATE "
      << CmakeQuote((payload / "include").string()) << ")\n"
      << "target_compile_definitions(abgame PRIVATE " << GameMacro(p.id) << ")\n"
