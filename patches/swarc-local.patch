@@ -1830,7 +1830,7 @@ index cb4e1ce..ca2ae55 100644
  
  HLE_NAMED("wbemprox.dll", "IEnumWbemClassObject::QueryInterface", Enum_QueryInterface, 3) {
 diff --git a/platforms/win32/src/win32/ws2_32.cpp b/platforms/win32/src/win32/ws2_32.cpp
-index 3e3ae1f..589c200 100644
+index 3e3ae1f..6fd2c8d 100644
 --- a/platforms/win32/src/win32/ws2_32.cpp
 +++ b/platforms/win32/src/win32/ws2_32.cpp
 @@ -5,14 +5,20 @@
@@ -1927,29 +1927,108 @@ index 3e3ae1f..589c200 100644
  #define RECOMP_WS2(ord, name, nargs)                                                \
    static uint64_t ws_##name(::recomp::Ctx& c);                                      \
    static ::recomp::hle::Registrar ws_reg_##name{"ws2_32.dll", #name, nargs,         \
-@@ -279,4 +320,499 @@ HLE64("ws2_32.dll", inet_ntop, 4) {
+@@ -279,4 +320,578 @@ HLE64("ws2_32.dll", inet_ntop, 4) {
    return Arg(c, 2);
  }
  
 +
 +// ---- connections and streams ------------------------------------------------
 +
-+bool ActivationBody(const std::string& request) {
-+  // The original server echoed the request's `types` field and returned
-+  // success for base-game activation. Reward checks stay unsuccessful.
-+  return request.find("checkKey") == std::string::npos;
++// Query parameters from the request line. The legacy client sends plain
++// alphanumerics; percent escapes are decoded for completeness.
++std::string UrlDecode(const std::string& s) {
++  auto hex = [](char c) {
++    return c <= '9' ? c - '0' : (c | 0x20) - 'a' + 10;
++  };
++  std::string out;
++  for (size_t i = 0; i < s.size(); i++) {
++    if (s[i] == '+') {
++      out += ' ';
++    } else if (s[i] == '%' && i + 2 < s.size() &&
++               std::isxdigit(static_cast<unsigned char>(s[i + 1])) &&
++               std::isxdigit(static_cast<unsigned char>(s[i + 2]))) {
++      out += char(hex(s[i + 1]) * 16 + hex(s[i + 2]));
++      i += 2;
++    } else {
++      out += s[i];
++    }
++  }
++  return out;
++}
++
++std::string QueryParam(const std::string& request, const char* name) {
++  const size_t line_end = request.find("\r\n");
++  const std::string line = request.substr(0, line_end);
++  const size_t q = line.find('?');
++  if (q == std::string::npos) return {};
++  const size_t end = line.find(' ', q);
++  const std::string query =
++      line.substr(q + 1, end == std::string::npos ? end : end - q - 1);
++  size_t p = 0;
++  while (p <= query.size()) {
++    const size_t amp = query.find('&', p);
++    const std::string pair =
++        query.substr(p, amp == std::string::npos ? std::string::npos : amp - p);
++    const size_t eq = pair.find('=');
++    if (eq != std::string::npos && pair.compare(0, eq, name) == 0)
++      return UrlDecode(pair.substr(eq + 1));
++    if (amp == std::string::npos) break;
++    p = amp + 1;
++  }
++  return {};
++}
++
++// The original DRM service accepted any activation key and checked content
++// codes against a fixed reward table.
++bool RewardKey(const std::string& key) {
++  if (key.size() != 11) return false;
++  for (char c : key)
++    if (c < 'A' || c > 'Z') return false;
++  return true;
++}
++
++bool FindReward(const std::string& key_type, const std::string& key,
++                std::string* type, std::string* group) {
++  struct Reward {
++    const char* key_type;
++    const char* key;
++    const char* type;
++    const char* group;
++  };
++  static constexpr Reward kRewards[] = {
++      {"RVMS2013AC", "SUPERSEEDXX", "RVMS2013AC", "rovio-ad-codes-2"},
++      {"HSBR2012TS", "BONUSLEVELX", "HSBR2012", "bonus"},
++      {"HSBR2012TS", "PATHOFJEDIX", "HSBR2012", "dagobah"},
++      {"HSBR2012TS", "ONEFALCONXX", "HSBR2012", "falcon"},
++      {"HSBR2012TS", "BOBAFETTXXX", "HSBR2012", "bobafett"},
++      {"HSBR2013TS", "CREDITTIERA", "HSBR2013TS", "cred-tier1"},
++      {"HSBR2013TS", "HASBROCODEA", "HSBR2013TS", "hasbro-toy-codes-10"},
++      {"HSBR2013TS", "CREDITTIERB", "HSBR2013TS", "cred-tier2"},
++      {"HSBR2013TS", "HASBROCODEB", "HSBR2013TS", "hasbro-toy-codes-11"},
++  };
++  for (const Reward& r : kRewards) {
++    if (key_type == r.key_type && key == r.key) {
++      *type = r.type;
++      *group = r.group;
++      return true;
++    }
++  }
++  return false;
 +}
 +
 +std::string ActivationResponse(const std::string& request) {
-+  if (!ActivationBody(request)) return "status=0&msg=invalid-key";
-+  std::string type;
-+  size_t q = request.find("types=");
-+  if (q != std::string::npos) {
-+    q += 6;
-+    size_t e = request.find_first_of("& \r\n", q);
-+    type = request.substr(q, e == std::string::npos ? e : e - q);
++  const size_t line_end = request.find("\r\n");
++  const std::string line = request.substr(0, line_end);
++  if (line.find("checkKey") != std::string::npos) {
++    std::string key = QueryParam(request, "key");
++    for (char& c : key) c = char(std::toupper(static_cast<unsigned char>(c)));
++    std::string type, group;
++    if (RewardKey(key) &&
++        FindReward(QueryParam(request, "types"), key, &type, &group))
++      return "status=1&type=" + type + "&group=" + group;
++    return "status=0&msg=invalid-key";
 +  }
-+  return "status=1&type=" + type;
++  return "status=1&type=" + QueryParam(request, "types");
 +}
 +
 +RECOMP_WS2(4, connect, 3) {
