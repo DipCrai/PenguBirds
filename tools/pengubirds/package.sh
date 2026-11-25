@@ -9,8 +9,12 @@ SWARC_REPO="https://github.com/JTM-rootstorm/SwARc.git"
 SWARC_COMMIT="6b25b3cefee425eb24a6fd0d096e6757c6cf9323"
 SWARC_DIR="$ROOT/out/deps/SwARc"
 
-# SwARc is a build-time dependency, not vendored. Fetch the exact base
-# revision and apply the compatibility patch set once.
+# SwARc is a build-time dependency, not vendored: fetch it for this build and
+# remove it again, so a source checkout never keeps a copy around.
+cleanup() { rm -rf "$SWARC_DIR"; }
+trap cleanup EXIT
+
+# Fetch the exact base revision and apply the compatibility patch set once.
 if [ ! -d "$SWARC_DIR/.git" ]; then
   mkdir -p "$ROOT/out/deps"
   git clone "$SWARC_REPO" "$SWARC_DIR"
